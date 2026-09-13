@@ -1,0 +1,12 @@
+schema: "classroom50/repo-config/v1"
+classroom: "si783-2026-ii"
+assignment: "si783-2026-ii-proyecto"
+owner:
+  username: "saulalvarado1"
+  id: 181868893
+  accepted_at: "2026-09-13T15:20:22Z"
+source:
+  owner: "UPT-FAING-EPIS"
+  owner_id: 85908869
+  repo: "proyecto-formatos-01"
+  branch: "main"
