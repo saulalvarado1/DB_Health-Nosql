@@ -8,10 +8,10 @@ class CredentialsCipher:
     """Cifra secretos de conexión antes de guardarlos en PostgreSQL."""
 
     def __init__(self, encryption_key: str | None = None) -> None:
-        key = encryption_key or (
-            settings.credentials_encryption_key.get_secret_value()
-            if settings.credentials_encryption_key
-            else None
+        key = (
+            encryption_key
+            if encryption_key is not None
+            else settings.credentials_encryption_key.get_secret_value()
         )
         if not key:
             raise ServiceUnavailableError("El cifrado de credenciales no está configurado.")
