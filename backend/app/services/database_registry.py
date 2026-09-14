@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
+from uuid import UUID
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.secrets import CredentialsCipher
-from app.domain.commands import RegisterMonitoredDatabaseCommand
-from app.domain.errors import ConfigurationError, ResourceConflictError
+from app.domain.commands import RegisterMonitoredDatabaseCommand, UpdateMonitoredDatabaseCommand
+from app.domain.errors import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from app.infrastructure.persistence.models import (
     DatabaseThresholdProfile,
     MonitoredDatabase,
@@ -54,3 +57,46 @@ class DatabaseRegistryService:
             ) from error
         self._session.refresh(monitored_database)
         return monitored_database
+
+    def update(
+        self,
+        *,
+        database_id: UUID,
+        owner_id: UUID,
+        command: UpdateMonitoredDatabaseCommand,
+    ) -> MonitoredDatabase:
+        monitored_database = self._databases.get_for_owner(database_id, owner_id)
+        if monitored_database is None:
+            raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
+        if monitored_database.schedule is None:
+            raise ConfigurationError("La instancia monitoreada no tiene programación configurada.")
+
+        schedule_immediately = False
+        if command.name is not None:
+            monitored_database.name = command.name
+        if command.interval_seconds is not None:
+            monitored_database.schedule.interval_seconds = command.interval_seconds
+            schedule_immediately = True
+        if command.is_enabled is not None:
+            monitored_database.is_enabled = command.is_enabled
+            monitored_database.schedule.is_enabled = command.is_enabled
+            schedule_immediately = command.is_enabled
+        if schedule_immediately:
+            monitored_database.schedule.next_run_at = datetime.now(UTC)
+
+        try:
+            self._session.commit()
+        except IntegrityError as error:
+            self._session.rollback()
+            raise ResourceConflictError(
+                "Ya existe una instancia con ese nombre para el motor seleccionado."
+            ) from error
+        self._session.refresh(monitored_database)
+        return monitored_database
+
+    def delete(self, *, database_id: UUID, owner_id: UUID) -> None:
+        monitored_database = self._databases.get_for_owner(database_id, owner_id)
+        if monitored_database is None:
+            raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
+        self._databases.remove(monitored_database)
+        self._session.commit()

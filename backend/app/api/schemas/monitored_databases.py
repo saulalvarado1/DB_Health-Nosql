@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 from app.domain.models import DatabaseEngine
 
@@ -37,3 +37,25 @@ class MonitoredDatabaseResponse(BaseModel):
     interval_seconds: int
     is_enabled: bool
     created_at: datetime
+
+
+class UpdateMonitoredDatabaseRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    interval_seconds: int | None = Field(default=None, ge=10, le=86_400)
+    is_enabled: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def updated_name_must_not_be_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("El nombre de la instancia no puede estar vacío.")
+        return normalized_value
+
+    @model_validator(mode="after")
+    def update_must_contain_a_change(self) -> "UpdateMonitoredDatabaseRequest":
+        if all(value is None for value in (self.name, self.interval_seconds, self.is_enabled)):
+            raise ValueError("Debes enviar al menos un campo para actualizar.")
+        return self

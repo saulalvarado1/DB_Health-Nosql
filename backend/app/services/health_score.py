@@ -33,7 +33,7 @@ def assess_metrics(
         value = metrics.get(rule.metric_code)
         if value is None:
             continue
-        severity = _severity(value, rule)
+        severity = severity_for_rule(value, rule)
         if severity is HealthStatus.CRITICAL:
             has_critical = True
             score -= 50
@@ -52,7 +52,7 @@ def assess_metrics(
     return HealthAssessment(max(0, score), status, tuple(reasons))
 
 
-def _severity(value: float, rule: HealthRule) -> HealthStatus | None:
+def severity_for_rule(value: float, rule: HealthRule) -> HealthStatus | None:
     if rule.direction == "above":
         if value >= rule.critical_value:
             return HealthStatus.CRITICAL

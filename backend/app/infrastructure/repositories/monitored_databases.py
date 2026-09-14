@@ -17,6 +17,9 @@ class MonitoredDatabaseRepository:
         self._session.add(monitored_database)
         return monitored_database
 
+    def remove(self, monitored_database: MonitoredDatabase) -> None:
+        self._session.delete(monitored_database)
+
     def get_for_owner(self, database_id: UUID, owner_id: UUID) -> MonitoredDatabase | None:
         statement = (
             select(MonitoredDatabase)

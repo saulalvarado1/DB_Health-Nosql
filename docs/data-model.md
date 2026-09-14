@@ -23,10 +23,10 @@ monitored_databases 1 ── N alerts
 |---|---|---|
 | Identidad | `users` | Cuentas de acceso a la plataforma. |
 | Catálogos | `database_engines`, `metric_definitions` | Describe motores y métricas válidas, sin duplicarlas por instancia. |
-| Configuración | `monitored_databases`, `monitoring_schedules` | Define qué se monitoriza y con qué frecuencia. La URI se almacena cifrada. |
+| Configuración | `monitored_databases`, `monitoring_schedules` | Define qué se monitoriza y con qué frecuencia. La URI se almacena cifrada; la programación mantiene el próximo ciclo y una reserva temporal del worker. |
 | Reglas | `threshold_profiles`, `threshold_rules`, `database_threshold_profiles` | Permite reutilizar umbrales entre instancias del mismo usuario y motor. |
 | Historial | `metric_samples`, `metric_values`, `health_assessments` | Guarda cada recolección y sus valores en filas atómicas. |
-| Incidentes | `alerts` | Conserva alertas y su ciclo de vida sin borrar el historial. |
+| Incidentes | `alerts` | Conserva alertas y su ciclo de vida sin borrar el historial. Una clave de deduplicación evita alertas activas repetidas para la misma condición. |
 
 ## Cómo se aplican las normas de normalización
 
@@ -54,5 +54,7 @@ el nombre de un motor no requiere actualizar millones de muestras.
 - `metric_samples(monitored_database_id, collected_at)` acelera el historial por
   instancia y rango de tiempo.
 - `alerts(monitored_database_id, status)` acelera el panel de alertas activas.
+- Un índice único parcial sobre la instancia y la clave de deduplicación conserva a lo sumo una alerta abierta o reconocida por condición. Al normalizarse la métrica, se marca como resuelta, pero no se elimina.
+- `monitoring_schedules(is_enabled, next_run_at)` permite encontrar los ciclos vencidos sin recorrer toda la configuración. `lease_owner` y `lease_expires_at` impiden que dos workers recolecten la misma instancia; no forman parte del historial de métricas.
 - Las muestras no deben editarse: son evidencia histórica. Las agregaciones y
   políticas de retención se incorporarán en una migración posterior.

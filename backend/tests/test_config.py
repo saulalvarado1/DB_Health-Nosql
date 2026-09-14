@@ -26,3 +26,11 @@ def test_settings_accept_values_from_environment() -> None:
 
     assert settings.database_url.hosts()[0]["host"] == "localhost"
     assert settings.jwt_secret_key.get_secret_value() == "test-jwt-secret-not-for-production"
+
+
+def test_worker_settings_have_bounded_defaults() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.monitoring_worker_poll_seconds == 5
+    assert settings.monitoring_lease_seconds == 90
+    assert settings.monitoring_worker_batch_size == 25

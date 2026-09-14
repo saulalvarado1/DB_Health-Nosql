@@ -25,3 +25,21 @@ class MonitoringRunResponse(BaseModel):
             health_status=result.health_status,
             metric_count=result.metric_count,
         )
+
+
+class MetricValueHistoryResponse(BaseModel):
+    code: str
+    display_name: str
+    unit: str
+    value: float
+
+
+class MonitoringHistoryResponse(BaseModel):
+    sample_id: UUID
+    collected_at: datetime
+    collection_succeeded: bool
+    error_message: str | None
+    health_score: int
+    health_status: HealthStatus
+    evaluated_at: datetime
+    metrics: list[MetricValueHistoryResponse]

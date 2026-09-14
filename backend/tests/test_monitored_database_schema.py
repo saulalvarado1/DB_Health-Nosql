@@ -1,7 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from app.api.schemas.monitored_databases import CreateMonitoredDatabaseRequest
+from app.api.schemas.monitored_databases import (
+    CreateMonitoredDatabaseRequest,
+    UpdateMonitoredDatabaseRequest,
+)
 from app.domain.models import DatabaseEngine
 
 
@@ -32,3 +35,12 @@ def test_blank_connection_uri_is_rejected() -> None:
             engine=DatabaseEngine.REDIS,
             connection_uri="   ",
         )
+
+
+def test_update_request_requires_a_change_and_normalizes_name() -> None:
+    with pytest.raises(ValidationError, match="al menos un campo"):
+        UpdateMonitoredDatabaseRequest()
+
+    request = UpdateMonitoredDatabaseRequest(name="  Redis secundario  ")
+
+    assert request.name == "Redis secundario"

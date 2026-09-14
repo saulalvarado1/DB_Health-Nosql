@@ -110,6 +110,13 @@ class MonitoringSchedule(TimestampedModel, Base):
     )
     interval_seconds: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    next_run_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_owner: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
 
     monitored_database: Mapped[MonitoredDatabase] = relationship(back_populates="schedule")
 
@@ -290,6 +297,13 @@ class Alert(TimestampedModel, Base):
     __tablename__ = "alerts"
     __table_args__ = (
         Index("ix_alerts_database_status", "monitored_database_id", "status"),
+        Index(
+            "uq_alerts_active_deduplication",
+            "monitored_database_id",
+            "deduplication_key",
+            unique=True,
+            postgresql_where=text("status IN ('open', 'acknowledged')"),
+        ),
         CheckConstraint("severity IN ('warning', 'critical')", name="ck_alert_severity"),
         CheckConstraint("status IN ('open', 'acknowledged', 'resolved')", name="ck_alert_status"),
     )
@@ -304,6 +318,7 @@ class Alert(TimestampedModel, Base):
     threshold_rule_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("threshold_rules.id", ondelete="SET NULL")
     )
+    deduplication_key: Mapped[str] = mapped_column(String(160), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)

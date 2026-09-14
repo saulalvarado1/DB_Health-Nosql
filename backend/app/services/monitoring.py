@@ -10,13 +10,22 @@ from app.domain.models import HealthStatus
 from app.infrastructure.connectors.registry import ConnectorRegistry
 from app.infrastructure.persistence.models import (
     HealthAssessment,
+    MetricDefinition,
     MetricSample,
     MetricValue,
     MonitoredDatabase,
+    ThresholdRule,
 )
+from app.infrastructure.repositories.alerts import AlertRepository
 from app.infrastructure.repositories.metrics import MetricCatalogRepository
 from app.infrastructure.repositories.thresholds import ThresholdProfileRepository
-from app.services.health_score import HealthRule, assess_connection, assess_metrics
+from app.services.alerts import AlertLifecycleService, AlertSignal
+from app.services.health_score import (
+    HealthRule,
+    assess_connection,
+    assess_metrics,
+    severity_for_rule,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +52,7 @@ class MonitoringService:
         self._connectors = connectors
         self._metric_catalog = MetricCatalogRepository(session)
         self._threshold_profiles = ThresholdProfileRepository(session)
+        self._alerts = AlertLifecycleService(AlertRepository(session))
 
     def collect_once(self, monitored_database: MonitoredDatabase) -> MonitoringRunResult:
         collected_at = datetime.now(UTC)
@@ -68,18 +78,8 @@ class MonitoringService:
                     MetricValue(metric_definition_id=definition.id, numeric_value=numeric_value)
                 )
 
-        health_rules = [
-            HealthRule(
-                metric_code=definition.code,
-                display_name=definition.display_name,
-                direction=definition.alert_direction,
-                warning_value=float(rule.warning_value),
-                critical_value=float(rule.critical_value),
-            )
-            for rule, definition in self._threshold_profiles.rules_for_database(
-                monitored_database.id
-            )
-        ]
+        configured_rules = self._threshold_profiles.rules_for_database(monitored_database.id)
+        health_rules = [self._health_rule(rule, definition) for rule, definition in configured_rules]
         assessment = assess_metrics(collected_metrics, health_rules)
         sample.health_assessment = HealthAssessment(
             score=assessment.score,
@@ -87,6 +87,13 @@ class MonitoringService:
             evaluated_at=collected_at,
         )
         self._session.add(sample)
+        self._session.flush()
+        self._alerts.synchronize(
+            monitored_database_id=monitored_database.id,
+            sample_id=sample.id,
+            signals=self._threshold_alert_signals(collected_metrics, configured_rules),
+            evaluated_at=collected_at,
+        )
         self._session.commit()
         self._session.refresh(sample)
         return MonitoringRunResult(
@@ -114,6 +121,20 @@ class MonitoringService:
             evaluated_at=collected_at,
         )
         self._session.add(sample)
+        self._session.flush()
+        self._alerts.synchronize(
+            monitored_database_id=monitored_database.id,
+            sample_id=sample.id,
+            signals=(
+                AlertSignal(
+                    deduplication_key="connection-unavailable",
+                    severity=HealthStatus.CRITICAL,
+                    message="La instancia monitoreada no responde.",
+                    threshold_rule_id=None,
+                ),
+            ),
+            evaluated_at=collected_at,
+        )
         self._session.commit()
         self._session.refresh(sample)
         return MonitoringRunResult(
@@ -124,3 +145,36 @@ class MonitoringService:
             health_status=assessment.status,
             metric_count=0,
         )
+
+    @staticmethod
+    def _health_rule(rule: ThresholdRule, definition: MetricDefinition) -> HealthRule:
+        return HealthRule(
+            metric_code=definition.code,
+            display_name=definition.display_name,
+            direction=definition.alert_direction,
+            warning_value=float(rule.warning_value),
+            critical_value=float(rule.critical_value),
+        )
+
+    def _threshold_alert_signals(
+        self,
+        metrics: dict[str, float],
+        configured_rules: list[tuple[ThresholdRule, MetricDefinition]],
+    ) -> list[AlertSignal]:
+        signals: list[AlertSignal] = []
+        for rule, definition in configured_rules:
+            value = metrics.get(definition.code)
+            if value is None:
+                continue
+            severity = severity_for_rule(value, self._health_rule(rule, definition))
+            if severity not in {HealthStatus.WARNING, HealthStatus.CRITICAL}:
+                continue
+            signals.append(
+                AlertSignal(
+                    deduplication_key=f"threshold-rule:{rule.id}",
+                    severity=severity,
+                    message=f"{definition.display_name} alcanzó un nivel {severity.value}.",
+                    threshold_rule_id=rule.id,
+                )
+            )
+        return signals
