@@ -60,3 +60,10 @@ conexión falló.
 
 La instancia se configura con `PATCH /api/v1/databases/{database_id}` (nombre,
 intervalo o estado) y se elimina con `DELETE /api/v1/databases/{database_id}`.
+
+## Umbrales
+
+Consulta las reglas asignadas con `GET /api/v1/databases/{database_id}/thresholds`.
+Actualiza una regla con `PUT /api/v1/databases/{database_id}/thresholds/{metric_code}`.
+La primera personalización clona el perfil predeterminado para que el cambio no
+afecte a otras instancias del mismo usuario y motor.

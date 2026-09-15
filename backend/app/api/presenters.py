@@ -3,8 +3,9 @@ from app.api.schemas.monitoring import (
     MetricValueHistoryResponse,
     MonitoringHistoryResponse,
 )
+from app.api.schemas.thresholds import ThresholdProfileResponse, ThresholdRuleResponse
 from app.domain.models import HealthStatus
-from app.infrastructure.persistence.models import MetricSample, MonitoredDatabase
+from app.infrastructure.persistence.models import MetricSample, MonitoredDatabase, ThresholdProfile
 
 
 def monitored_database_response(database: MonitoredDatabase) -> MonitoredDatabaseResponse:
@@ -42,5 +43,27 @@ def monitoring_history_response(sample: MetricSample) -> MonitoringHistoryRespon
                 value=float(value.numeric_value),
             )
             for value in sorted(sample.values, key=lambda item: item.metric_definition.code)
+        ],
+    )
+
+
+def threshold_profile_response(profile: ThresholdProfile) -> ThresholdProfileResponse:
+    """Presenta reglas configurables sin revelar datos de conexión de la instancia."""
+    return ThresholdProfileResponse(
+        id=profile.id,
+        name=profile.name,
+        engine=profile.engine_id,
+        is_default=profile.is_default,
+        rules=[
+            ThresholdRuleResponse(
+                metric_definition_id=rule.metric_definition.id,
+                metric_code=rule.metric_definition.code,
+                display_name=rule.metric_definition.display_name,
+                unit=rule.metric_definition.unit,
+                alert_direction=rule.metric_definition.alert_direction,
+                warning_value=float(rule.warning_value),
+                critical_value=float(rule.critical_value),
+            )
+            for rule in sorted(profile.rules, key=lambda item: item.metric_definition.code)
         ],
     )

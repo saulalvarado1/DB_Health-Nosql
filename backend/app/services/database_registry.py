@@ -98,5 +98,11 @@ class DatabaseRegistryService:
         monitored_database = self._databases.get_for_owner(database_id, owner_id)
         if monitored_database is None:
             raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
+        profile = ThresholdProfileRepository(self._session).get_assigned_for_database_and_owner(
+            database_id, owner_id
+        )
         self._databases.remove(monitored_database)
+        self._session.flush()
+        if profile is not None:
+            ThresholdProfileRepository(self._session).remove_if_unassigned(profile)
         self._session.commit()

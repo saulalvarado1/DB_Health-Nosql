@@ -1,9 +1,12 @@
+from uuid import UUID
+
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.infrastructure.persistence.models import (
     DatabaseThresholdProfile,
     MetricDefinition,
+    MonitoredDatabase,
     ThresholdProfile,
     ThresholdRule,
 )
@@ -75,3 +78,73 @@ class ThresholdProfileRepository:
             .where(DatabaseThresholdProfile.monitored_database_id == monitored_database_id)
         )
         return list(self._session.execute(statement).tuples())
+
+    def get_assigned_for_database_and_owner(
+        self, database_id: UUID, owner_id: UUID
+    ) -> ThresholdProfile | None:
+        statement = (
+            select(ThresholdProfile)
+            .join(
+                DatabaseThresholdProfile,
+                DatabaseThresholdProfile.threshold_profile_id == ThresholdProfile.id,
+            )
+            .join(
+                MonitoredDatabase,
+                MonitoredDatabase.id == DatabaseThresholdProfile.monitored_database_id,
+            )
+            .options(
+                selectinload(ThresholdProfile.rules).selectinload(ThresholdRule.metric_definition)
+            )
+            .where(
+                MonitoredDatabase.id == database_id,
+                MonitoredDatabase.owner_id == owner_id,
+            )
+        )
+        return self._session.scalar(statement)
+
+    def get_enabled_metric_for_engine(
+        self, engine_id: str, metric_code: str
+    ) -> MetricDefinition | None:
+        statement = select(MetricDefinition).where(
+            MetricDefinition.engine_id == engine_id,
+            MetricDefinition.code == metric_code,
+            MetricDefinition.is_enabled.is_(True),
+        )
+        return self._session.scalar(statement)
+
+    def clone_for_database(
+        self, profile: ThresholdProfile, monitored_database: MonitoredDatabase
+    ) -> ThresholdProfile:
+        """Copia un perfil compartido antes de que una instancia lo personalice."""
+        cloned_profile = ThresholdProfile(
+            owner_id=profile.owner_id,
+            engine_id=profile.engine_id,
+            name=f"Personalizado {monitored_database.id}",
+            is_default=False,
+        )
+        self._session.add(cloned_profile)
+        self._session.flush()
+        for rule in profile.rules:
+            cloned_profile.rules.append(
+                ThresholdRule(
+                    metric_definition_id=rule.metric_definition_id,
+                    warning_value=rule.warning_value,
+                    critical_value=rule.critical_value,
+                )
+            )
+
+        assignment = self._session.get(DatabaseThresholdProfile, monitored_database.id)
+        if assignment is None:
+            raise LookupError("La instancia no tiene un perfil de umbrales asignado.")
+        assignment.threshold_profile_id = cloned_profile.id
+        return cloned_profile
+
+    def remove_if_unassigned(self, profile: ThresholdProfile) -> None:
+        """Evita conservar perfiles personalizados sin ninguna instancia asignada."""
+        if profile.is_default:
+            return
+        statement = select(DatabaseThresholdProfile.monitored_database_id).where(
+            DatabaseThresholdProfile.threshold_profile_id == profile.id
+        )
+        if self._session.scalar(statement) is None:
+            self._session.delete(profile)

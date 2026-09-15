@@ -56,5 +56,6 @@ el nombre de un motor no requiere actualizar millones de muestras.
 - `alerts(monitored_database_id, status)` acelera el panel de alertas activas.
 - Un índice único parcial sobre la instancia y la clave de deduplicación conserva a lo sumo una alerta abierta o reconocida por condición. Al normalizarse la métrica, se marca como resuelta, pero no se elimina.
 - `monitoring_schedules(is_enabled, next_run_at)` permite encontrar los ciclos vencidos sin recorrer toda la configuración. `lease_owner` y `lease_expires_at` impiden que dos workers recolecten la misma instancia; no forman parte del historial de métricas.
+- Cada instancia recibe un perfil predeterminado reutilizable. Al personalizar una regla, se clona un perfil exclusivo y se actualiza la asignación: así un cambio no afecta a otras instancias del usuario.
 - Las muestras no deben editarse: son evidencia histórica. Las agregaciones y
   políticas de retención se incorporarán en una migración posterior.
