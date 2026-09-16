@@ -68,11 +68,12 @@ Actualiza una regla con `PUT /api/v1/databases/{database_id}/thresholds/{metric_
 La primera personalización clona el perfil predeterminado para que el cambio no
 afecte a otras instancias del mismo usuario y motor.
 
-## Prueba de integración aislada
+## Pruebas de integración aisladas
 
-La prueba de aislamiento entre usuarios usa exclusivamente la base
-`db_health_monitor_test`. No inicia el worker ni se conecta a Redis o MongoDB:
-las URI empleadas son ficticias. Antes de ejecutarla, migra solo esa base desde
+Las pruebas de aislamiento entre usuarios y concurrencia de workers usan
+exclusivamente la base `db_health_monitor_test`. No inician el worker ni se
+conectan a Redis o MongoDB:
+las URI empleadas son ficticias. Antes de ejecutarlas, migra solo esa base desde
 PowerShell en `backend`:
 
 ```powershell
@@ -106,3 +107,8 @@ editar, eliminar, recolectar, consultar historial o umbrales, y reconocer una
 alerta de la instancia del primero. Además, comprueba en PostgreSQL que la URI
 queda cifrada. Al terminar, borra únicamente los usuarios temporales cuyo correo
 empieza por `integration-`.
+
+El caso de concurrencia abre dos sesiones independientes. Mientras el primer
+worker conserva un bloqueo real, el segundo debe reclamar otra programación con
+`FOR UPDATE SKIP LOCKED`. También comprueba que una reserva vigente no se duplica
+y que otro worker puede recuperarla después de su vencimiento.
