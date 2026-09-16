@@ -67,3 +67,42 @@ Consulta las reglas asignadas con `GET /api/v1/databases/{database_id}/threshold
 Actualiza una regla con `PUT /api/v1/databases/{database_id}/thresholds/{metric_code}`.
 La primera personalización clona el perfil predeterminado para que el cambio no
 afecte a otras instancias del mismo usuario y motor.
+
+## Prueba de integración aislada
+
+La prueba de aislamiento entre usuarios usa exclusivamente la base
+`db_health_monitor_test`. No inicia el worker ni se conecta a Redis o MongoDB:
+las URI empleadas son ficticias. Antes de ejecutarla, migra solo esa base desde
+PowerShell en `backend`:
+
+```powershell
+$testPassword = Read-Host "Contraseña de db_health_test_app" -AsSecureString
+$testPasswordText = [System.Net.NetworkCredential]::new('', $testPassword).Password
+$encodedTestPassword = [uri]::EscapeDataString($testPasswordText)
+$env:TEST_DATABASE_URL = "postgresql+psycopg://db_health_test_app:$encodedTestPassword@localhost:5432/db_health_monitor_test"
+Remove-Variable testPasswordText, encodedTestPassword
+
+if ($env:TEST_DATABASE_URL -notmatch '/db_health_monitor_test(?:\?.*)?$') {
+    throw 'TEST_DATABASE_URL no apunta a db_health_monitor_test.'
+}
+
+$previousDatabaseUrl = $env:DATABASE_URL
+$env:DATABASE_URL = $env:TEST_DATABASE_URL
+.\.venv\Scripts\python.exe -m alembic upgrade head
+if ($null -eq $previousDatabaseUrl) {
+    Remove-Item Env:DATABASE_URL
+} else {
+    $env:DATABASE_URL = $previousDatabaseUrl
+}
+Remove-Variable previousDatabaseUrl
+
+.\.venv\Scripts\python.exe -m pytest -m integration
+Remove-Item Env:TEST_DATABASE_URL
+Remove-Variable testPassword
+```
+
+El caso crea dos usuarios temporales. El segundo recibe `404` al intentar ver,
+editar, eliminar, recolectar, consultar historial o umbrales, y reconocer una
+alerta de la instancia del primero. Además, comprueba en PostgreSQL que la URI
+queda cifrada. Al terminar, borra únicamente los usuarios temporales cuyo correo
+empieza por `integration-`.
