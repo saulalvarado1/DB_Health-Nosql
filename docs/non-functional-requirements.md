@@ -17,9 +17,9 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | ID | Atributo | Criterio de aceptación | Método y evidencia | Estado actual |
 |---|---|---|---|---|
 | RNF-SEC-01 | Configuración segura | La aplicación no inicia sin `DATABASE_URL`, `JWT_SECRET_KEY` y `CREDENTIALS_ENCRYPTION_KEY`. No hay valores secretos por defecto en código. | `backend/tests/test_config.py` comprueba la ausencia de cada variable. | `VALIDADO` |
-| RNF-SEC-02 | Confidencialidad | Las URI y contraseñas de bases monitorizadas se cifran en el almacén interno y no aparecen en respuestas ni logs. | `test_security.py`, `test_monitoring_worker.py` y `test_tenant_isolation_integration.py` comprueban cifrado real en PostgreSQL, respuestas sin URI y logs sin contraseñas. | `VALIDADO` |
+| RNF-SEC-02 | Confidencialidad | Las URI y contraseñas de bases monitorizadas se cifran en el almacén interno y no aparecen en respuestas ni logs. | `test_security.py`, `test_monitoring_worker.py`, `test_tenant_isolation_integration.py` y `test_real_services_integration.py` comprueban cifrado real en PostgreSQL, respuestas sin URI y logs sin contraseñas. | `VALIDADO` |
 | RNF-SEC-03 | Autenticación y autorización | Toda ruta de datos exige JWT válido; un usuario no puede leer, modificar, recolectar ni eliminar instancias de otro usuario. | `test_security.py` valida los tokens y `test_tenant_isolation_integration.py` verifica con dos usuarios y PostgreSQL real que las rutas ajenas devuelven `404`. | `VALIDADO` |
-| RNF-DAT-01 | Integridad | Los datos históricos no se sobrescriben; métricas, reglas, perfiles y alertas mantienen sus claves foráneas y restricciones. | Migraciones Alembic, modelo 3FN y pruebas de validación de esquemas y umbrales. | `PARCIAL` |
+| RNF-DAT-01 | Integridad | Los datos históricos no se sobrescriben; métricas, reglas, perfiles y alertas mantienen sus claves foráneas y restricciones. | Migraciones Alembic, modelo 3FN, pruebas de esquemas y umbrales, y `test_real_services_integration.py`, que conserva tres muestras Redis con identificadores distintos. | `VALIDADO` |
 | RNF-DIS-01 | Disponibilidad | `GET /health` informa que el proceso vive sin depender de PostgreSQL. `GET /health/ready` devuelve `503` si PostgreSQL no responde. | `backend/tests/test_health_routes.py`. | `VALIDADO` |
 | RNF-CON-01 | Concurrencia | Dos workers no procesan la misma programación durante una reserva vigente; tras vencer la reserva, otro worker puede retomarla. | `test_worker_concurrency_integration.py` mantiene un bloqueo real entre dos conexiones PostgreSQL, verifica `SKIP LOCKED`, evita duplicados y recupera reservas vencidas. | `VALIDADO` |
 | RNF-RES-01 | Tolerancia a fallos | Si falla una recolección, se registra un resultado seguro, la programación se libera y el siguiente ciclo puede continuar. | `backend/tests/test_monitoring_worker.py` y prueba manual con Redis inaccesible. | `VALIDADO` |
@@ -27,25 +27,30 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | RNF-OBS-01 | Observabilidad | API y worker generan logs de nivel configurable, sin secretos, y exponen health/readiness para supervisión. | Revisión de configuración, pruebas de no filtrado y verificación manual de endpoints. | `PARCIAL` |
 | RNF-MAN-01 | Mantenibilidad | El código mantiene las capas rutas → servicios → repositorios/conectores y supera pruebas y linter. | `pytest` y `ruff check backend` desde el directorio `backend`. | `VALIDADO` |
 | RNF-DES-01 | Desplegabilidad | El sistema se puede iniciar con contenedores, migrar la base automáticamente y recibir configuración únicamente mediante variables de entorno. | `Dockerfile`, composición de servicios, health checks y prueba de arranque limpio. | `PENDIENTE` |
-| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend futuro funciona en navegadores definidos por el equipo. | `/docs`, pruebas de contrato y, al crear React, pruebas E2E en navegadores acordados. | `PARCIAL` |
+| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend futuro funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan un origen explícito y el valor seguro por defecto. Faltan el cliente React y pruebas E2E en navegadores acordados. | `PARCIAL` |
 
 ## Línea base actual
 
-El 16 de septiembre de 2026, la suite normal del backend produjo:
+El 21 de septiembre de 2026, la suite normal del backend produjo:
 
 ```text
-32 passed, 2 skipped, 2 warnings
+34 passed, 3 skipped, 2 warnings
 ```
 
-Las pruebas aisladas contra `db_health_monitor_test` produjeron:
+El script reproducible con PostgreSQL, Redis y MongoDB reales de prueba produjo:
 
 ```text
-2 passed, 32 deselected, 2 warnings
+3 passed, 34 deselected, 2 warnings
 ```
 
 Las dos advertencias son deprecaciones de dependencias usadas por el cliente de pruebas de FastAPI/Starlette. No son fallos de los requisitos ni deben resolverse instalando paquetes al azar; se atenderán al actualizar de manera compatible las dependencias de desarrollo.
 
-Los dos casos omitidos en la suite normal requieren `TEST_DATABASE_URL`; su ejecución separada acredita aislamiento entre usuarios y concurrencia real entre conexiones PostgreSQL. Esta línea base todavía no demuestra rendimiento, despliegue en nube ni recolecciones exitosas contra servicios Redis y MongoDB reales.
+Los tres casos omitidos en la suite normal requieren servicios externos y
+variables `TEST_*`. `backend/scripts/run_real_services_integration.ps1` los
+levanta de forma aislada y acredita aislamiento entre usuarios, concurrencia
+PostgreSQL, permisos de solo lectura, recolección real Redis/MongoDB, historial y
+ciclo de alertas. Esta línea base todavía no demuestra rendimiento ni despliegue
+en nube.
 
 ## Evidencia por cada entrega
 
@@ -65,11 +70,13 @@ No se incluirán tokens JWT, contraseñas, URI de producción ni contenido del a
 
 ## Próximo bloque de validación
 
-El siguiente incremento se enfocará en el ciclo completo de monitoreo, en este orden:
+El ciclo completo de monitoreo del backend ya quedó validado. El siguiente
+incremento se enfocará en:
 
-1. Recolección exitosa contra una instancia Redis de pruebas con credenciales de solo lectura.
-2. Recolección exitosa contra una instancia MongoDB de pruebas con credenciales de solo lectura.
-3. Ciclo completo métrica → evaluación → alerta → resolución con servicios reales de prueba.
-4. Contenedores reproducibles, prueba de carga y evidencia del entorno desplegado.
+1. Contenedores de despliegue y prueba de arranque limpio del sistema completo.
+2. Prueba de carga en un entorno con infraestructura definida.
+3. Frontend React y pruebas E2E en los navegadores acordados.
+4. Métricas operativas y trazabilidad para cerrar observabilidad.
 
-El frontend y las pruebas E2E se incorporarán después de cerrar estas validaciones del backend.
+La evidencia detallada de este cierre se encuentra en
+`docs/backend-v1-audit.md`.

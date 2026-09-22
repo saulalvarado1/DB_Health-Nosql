@@ -24,6 +24,17 @@ En una terminal inicia la API:
 
 La documentación interactiva queda disponible en `http://127.0.0.1:8000/docs`.
 
+## Acceso desde el frontend
+
+Los orígenes web permitidos se configuran explícitamente como una lista JSON:
+
+```dotenv
+CORS_ALLOWED_ORIGINS=["http://localhost:5173"]
+```
+
+La lista está vacía por defecto, por lo que no se habilita acceso entre orígenes
+accidentalmente. No uses `"*"` cuando se envían credenciales.
+
 En otra terminal inicia el worker. Es un proceso independiente de la API:
 
 ```powershell
@@ -70,11 +81,22 @@ afecte a otras instancias del mismo usuario y motor.
 
 ## Pruebas de integración aisladas
 
-Las pruebas de aislamiento entre usuarios y concurrencia de workers usan
-exclusivamente la base `db_health_monitor_test`. No inician el worker ni se
-conectan a Redis o MongoDB:
-las URI empleadas son ficticias. Antes de ejecutarlas, migra solo esa base desde
-PowerShell en `backend`:
+La forma recomendada de ejecutar todas las pruebas de integración es:
+
+```powershell
+.\scripts\run_real_services_integration.ps1
+```
+
+El script crea contenedores temporales con versiones fijadas de PostgreSQL,
+Redis y MongoDB, genera contraseñas aleatorias en memoria, migra únicamente
+`db_health_monitor_test`, ejecuta `pytest -m integration` y elimina los
+contenedores en un bloque `finally`. Se niega a reemplazar contenedores que ya
+tengan sus nombres reservados.
+
+Si solo se dispone de PostgreSQL, las pruebas de aislamiento entre usuarios y
+concurrencia de workers pueden ejecutarse manualmente. No inician el worker y
+emplean URI ficticias para Redis o MongoDB. Antes de ejecutarlas, migra solo la
+base de prueba desde PowerShell en `backend`:
 
 ```powershell
 $testPassword = Read-Host "Contraseña de db_health_test_app" -AsSecureString
@@ -112,3 +134,7 @@ El caso de concurrencia abre dos sesiones independientes. Mientras el primer
 worker conserva un bloqueo real, el segundo debe reclamar otra programación con
 `FOR UPDATE SKIP LOCKED`. También comprueba que una reserva vigente no se duplica
 y que otro worker puede recuperarla después de su vencimiento.
+
+El caso de servicios reales comprueba usuarios de monitoreo de solo lectura,
+recolección de métricas Redis y MongoDB, tres muestras históricas independientes,
+cifrado de las URI y el ciclo de alerta `open` → `acknowledged` → `resolved`.
