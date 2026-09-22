@@ -1,0 +1,198 @@
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link, useParams } from 'react-router-dom'
+
+import type { MonitoredDatabase, MonitoringHistory } from '../api/contracts'
+import { databasesApi } from '../api/resources'
+import { HealthChart } from '../components/HealthChart'
+import { Button, EmptyState, ErrorNotice, LoadingState, PageHeading, Panel, StatusBadge, SuccessNotice } from '../components/ui'
+import { getErrorMessage } from '../core/errors'
+import { formatDate, formatDateWithSeconds, formatMetric, formatTimeWithSeconds } from '../core/format'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
+
+export function DatabaseDetailPage() {
+  const { databaseId = '' } = useParams()
+  const [database, setDatabase] = useState<MonitoredDatabase | null>(null)
+  const [history, setHistory] = useState<MonitoringHistory[]>([])
+  const [name, setName] = useState('')
+  const [intervalSeconds, setIntervalSeconds] = useState(30)
+  const [error, setError] = useState('')
+  const [refreshError, setRefreshError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busyAction, setBusyAction] = useState<'collect' | 'save' | 'toggle' | null>(null)
+
+  const refreshHistory = useCallback(async () => {
+    const updatedHistory = await databasesApi.history(databaseId, 50)
+    setHistory(updatedHistory)
+    setLastUpdatedAt(new Date().toISOString())
+  }, [databaseId])
+
+  const autoRefreshHistory = useCallback(async () => {
+    await refreshHistory()
+    setRefreshError('')
+  }, [refreshHistory])
+
+  const handleAutoRefreshError = useCallback(() => {
+    setRefreshError('No se pudo actualizar el historial. Se reintentará automáticamente.')
+  }, [])
+
+  useEffect(() => {
+    if (!databaseId) return
+    let active = true
+    Promise.all([databasesApi.get(databaseId), databasesApi.history(databaseId, 50)])
+      .then(([databaseResponse, historyResponse]) => {
+        if (!active) return
+        setDatabase(databaseResponse)
+        setName(databaseResponse.name)
+        setIntervalSeconds(databaseResponse.interval_seconds)
+        setHistory(historyResponse)
+        setLastUpdatedAt(new Date().toISOString())
+      })
+      .catch((requestError: unknown) => {
+        if (active) setError(getErrorMessage(requestError))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [databaseId])
+
+  const autoRefreshIntervalMs = Math.max(5_000, (database?.interval_seconds ?? 30) * 500)
+  useAutoRefresh({
+    callback: autoRefreshHistory,
+    enabled: database?.is_enabled === true,
+    intervalMs: autoRefreshIntervalMs,
+    onError: handleAutoRefreshError,
+  })
+
+  const latest = history[0] ?? null
+  const latestMetrics = useMemo(() => latest?.metrics ?? [], [latest])
+
+  async function collectNow() {
+    setBusyAction('collect')
+    setError('')
+    setSuccess('')
+    try {
+      const result = await databasesApi.collect(databaseId)
+      setSuccess(
+        result.collection_succeeded
+          ? `Recolección terminada: ${result.metric_count} métricas procesadas.`
+          : 'La recolección terminó sin conexión; se guardó un resultado seguro.',
+      )
+      await refreshHistory()
+      setRefreshError('')
+    } catch (requestError) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusyAction('save')
+    setError('')
+    setSuccess('')
+    try {
+      const updated = await databasesApi.update(databaseId, {
+        name: name.trim(),
+        interval_seconds: intervalSeconds,
+      })
+      setDatabase(updated)
+      setSuccess('Configuración actualizada.')
+    } catch (requestError) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function toggleMonitoring() {
+    if (!database) return
+    setBusyAction('toggle')
+    setError('')
+    try {
+      setDatabase(await databasesApi.update(databaseId, { is_enabled: !database.is_enabled }))
+    } catch (requestError) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  if (loading) return <div className="page"><LoadingState /></div>
+
+  return (
+    <div className="page">
+      <PageHeading
+        eyebrow={database?.engine.toUpperCase() ?? 'Instancia'}
+        title={database?.name ?? 'Detalle no disponible'}
+        description={database
+          ? `Registrada el ${formatDate(database.created_at)} · monitoreo cada ${database.interval_seconds}s${lastUpdatedAt ? ` · vista actualizada ${formatTimeWithSeconds(lastUpdatedAt)}` : ''}`
+          : undefined}
+        action={database && (
+          <div className="page-actions">
+            <StatusBadge status={database.is_enabled ? 'enabled' : 'disabled'} />
+            <Button variant="secondary" busy={busyAction === 'toggle'} onClick={() => void toggleMonitoring()}>
+              {database.is_enabled ? 'Pausar' : 'Activar'}
+            </Button>
+            <Button busy={busyAction === 'collect'} disabled={!database.is_enabled} onClick={() => void collectNow()}>Recolectar ahora</Button>
+          </div>
+        )}
+      />
+
+      {error && <ErrorNotice message={error} />}
+      {refreshError && <ErrorNotice message={refreshError} />}
+      {success && <SuccessNotice message={success} />}
+
+      {database && (
+        <>
+          <section className="metric-grid">
+            <article className="metric-card"><span>Puntaje de salud</span><strong>{latest ? latest.health_score : '—'}</strong><small>{latest ? <StatusBadge status={latest.health_status} /> : 'Sin muestras'}</small></article>
+            {latestMetrics.slice(0, 3).map((metric) => (
+              <article className="metric-card" key={metric.code}><span>{metric.display_name}</span><strong>{formatMetric(metric.value, metric.unit)}</strong><small className="mono">{metric.code}</small></article>
+            ))}
+          </section>
+
+          <div className="detail-grid">
+            <Panel title="Tendencia de salud" description="Puntaje de las últimas 50 evaluaciones.">
+              <HealthChart history={history} />
+            </Panel>
+
+            <Panel title="Configuración" action={<Link className="text-action" to={`/thresholds?database=${database.id}`}>Editar umbrales</Link>}>
+              <form className="form-stack" onSubmit={saveSettings}>
+                <label className="field"><span>Nombre</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required /></label>
+                <label className="field"><span>Intervalo (segundos)</span><input type="number" value={intervalSeconds} onChange={(event) => setIntervalSeconds(event.target.valueAsNumber)} min={10} max={86_400} required /></label>
+                <Button type="submit" busy={busyAction === 'save'}>Guardar cambios</Button>
+              </form>
+            </Panel>
+          </div>
+
+          <Panel title="Historial de monitoreo" description="Las muestras son registros históricos y no se sobrescriben.">
+            {history.length ? (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Fecha</th><th>Recolección</th><th>Salud</th><th>Puntaje</th><th>Métricas</th></tr></thead>
+                  <tbody>
+                    {history.map((sample) => (
+                      <tr key={sample.sample_id}>
+                        <td>{formatDateWithSeconds(sample.collected_at)}</td>
+                        <td>{sample.collection_succeeded ? 'Correcta' : 'No disponible'}</td>
+                        <td><StatusBadge status={sample.health_status} /></td>
+                        <td className="mono">{sample.health_score}/100</td>
+                        <td>{sample.collection_succeeded ? `${sample.metrics.length} valores` : 'Error de conexión protegido'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <EmptyState title="Sin historial" message="Ejecuta una recolección o espera al siguiente ciclo del worker." />}
+          </Panel>
+        </>
+      )}
+    </div>
+  )
+}

@@ -27,7 +27,7 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | RNF-OBS-01 | Observabilidad | API y worker generan logs de nivel configurable, sin secretos, y exponen health/readiness para supervisión. | Revisión de configuración, pruebas de no filtrado y verificación manual de endpoints. | `PARCIAL` |
 | RNF-MAN-01 | Mantenibilidad | El código mantiene las capas rutas → servicios → repositorios/conectores y supera pruebas y linter. | `pytest` y `ruff check backend` desde el directorio `backend`. | `VALIDADO` |
 | RNF-DES-01 | Desplegabilidad | El sistema se puede iniciar con contenedores, migrar la base automáticamente y recibir configuración únicamente mediante variables de entorno. | `Dockerfile`, composición de servicios, health checks y prueba de arranque limpio. | `PENDIENTE` |
-| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend futuro funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan un origen explícito y el valor seguro por defecto. Faltan el cliente React y pruebas E2E en navegadores acordados. | `PARCIAL` |
+| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan CORS. El cliente React supera TypeScript, ESLint, pruebas unitarias, compilación y revisión responsive; faltan E2E en los navegadores acordados. | `PARCIAL` |
 
 ## Línea base actual
 
@@ -75,7 +75,7 @@ incremento se enfocará en:
 
 1. Contenedores de despliegue y prueba de arranque limpio del sistema completo.
 2. Prueba de carga en un entorno con infraestructura definida.
-3. Frontend React y pruebas E2E en los navegadores acordados.
+3. Pruebas E2E del frontend React en los navegadores acordados.
 4. Métricas operativas y trazabilidad para cerrar observabilidad.
 
 La evidencia detallada de este cierre se encuentra en

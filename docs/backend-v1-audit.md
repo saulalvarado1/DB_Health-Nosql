@@ -79,7 +79,7 @@ reformatearon porque no pertenecen a este cambio.
 
 | Prioridad | Hallazgo | Condición de cierre |
 |---|---|---|
-| Alta | No existe todavía el frontend React funcional. | Implementar autenticación, registro de instancias, panel, historial, umbrales y alertas; añadir E2E. |
+| Alta | El frontend React funcional ya existe, pero falta validar el flujo completo contra servicios aislados. | Añadir E2E para autenticación, registro de instancias, panel, historial, umbrales y alertas. |
 | Alta | Falta despliegue reproducible del sistema completo. | Añadir imágenes/compose de API, worker y frontend, migración y health checks; probar arranque limpio. |
 | Media | No existe una cifra demostrada de capacidad. | Ejecutar k6 o Locust en la infraestructura objetivo y publicar p95, throughput y errores. |
 | Media | Observabilidad incompleta. | Añadir métricas operativas y trazabilidad de API/worker sin secretos. |
