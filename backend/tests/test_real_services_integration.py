@@ -184,18 +184,45 @@ def test_real_redis_mongodb_collection_history_and_alert_lifecycle(
         connection_uri=TEST_REDIS_URI,
     )
     first_redis_sample = _collect(client, headers, redis_database_id)
-    assert first_redis_sample["metric_count"] == 6
+    assert first_redis_sample["metric_count"] == 27
 
     redis_history = client.get(f"/api/v1/databases/{redis_database_id}/history", headers=headers)
     assert redis_history.status_code == 200, redis_history.text
     assert {metric["code"] for metric in redis_history.json()[0]["metrics"]} == {
         "availability",
+        "blocked_clients",
         "connected_clients",
+        "connected_replicas",
+        "evicted_keys",
+        "expired_keys",
+        "expiring_keys_total",
+        "instantaneous_input_kbps",
+        "instantaneous_output_kbps",
+        "keys_total",
+        "keyspace_hit_rate_percent",
+        "keyspace_hits_total",
+        "keyspace_misses_total",
+        "latest_fork_microseconds",
+        "loading",
+        "memory_fragmentation_ratio",
         "memory_usage_percent",
+        "network_input_bytes_total",
+        "network_output_bytes_total",
         "operations_per_second",
+        "persistence_last_save_success",
+        "pubsub_channels",
         "rejected_connections",
+        "total_commands_processed",
+        "total_connections_received",
+        "uptime_seconds",
         "used_memory_bytes",
     }
+    assert all(
+        metric["status"] in {"healthy", "warning", "critical", "informational"}
+        and metric["message"]
+        and metric["diagnostic_basis"] in {"threshold", "heuristic", "informational"}
+        for metric in redis_history.json()[0]["metrics"]
+    )
 
     force_alert = client.put(
         f"/api/v1/databases/{redis_database_id}/thresholds/memory_usage_percent",
@@ -249,7 +276,7 @@ def test_real_redis_mongodb_collection_history_and_alert_lifecycle(
         connection_uri=TEST_MONGODB_URI,
     )
     mongodb_sample = _collect(client, headers, mongodb_database_id)
-    assert mongodb_sample["metric_count"] == 4
+    assert mongodb_sample["metric_count"] == 20
     assert mongodb_sample["health_status"] == "healthy"
 
     mongodb_history = client.get(
@@ -258,10 +285,27 @@ def test_real_redis_mongodb_collection_history_and_alert_lifecycle(
     assert mongodb_history.status_code == 200, mongodb_history.text
     assert {metric["code"] for metric in mongodb_history.json()[0]["metrics"]} == {
         "availability",
+        "connections_active",
+        "connections_available",
         "connections_current",
+        "connections_usage_percent",
+        "documents_read_total",
+        "documents_written_total",
+        "global_lock_active_clients",
+        "global_lock_queue_total",
         "memory_resident_mb",
+        "network_bytes_in",
+        "network_bytes_out",
+        "network_requests_total",
+        "open_cursors",
         "operations_total",
+        "query_scanned_documents_total",
+        "query_scanned_keys_total",
+        "uptime_seconds",
+        "wiredtiger_cache_dirty_percent",
+        "wiredtiger_cache_usage_percent",
     }
+    assert all(metric["message"] for metric in mongodb_history.json()[0]["metrics"])
 
     with integration_session_factory() as session:
         stored_databases = list(

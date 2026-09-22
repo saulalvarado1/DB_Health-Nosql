@@ -1,6 +1,6 @@
 # Auditoría del frontend V1 — DB Health Monitor
 
-Fecha: 21 de septiembre de 2026
+Fecha: 22 de septiembre de 2026
 Alcance: primera implementación funcional del cliente React, adaptada desde la
 referencia visual de Stitch al contrato real del backend V1.
 
@@ -57,34 +57,39 @@ usuario y cifrado de secretos; no depende de ocultar JavaScript.
 
 ```text
 npm run lint   → sin errores ni advertencias
-npm test       → 6 archivos, 17 pruebas aprobadas
+npm test       → 7 archivos, 21 pruebas aprobadas
 npm run build  → compilación de producción correcta
 npm audit --omit=dev → 0 vulnerabilidades
-pytest -m "not integration" → 34 passed, 3 deselected, 2 warnings
+pytest -m "not integration" → 45 passed, 3 deselected, 2 warnings
 ruff check     → All checks passed
 ```
 
 La pantalla de acceso se verificó visualmente en 1440×900 y 390×844. También se
-comprobó manualmente con Redis real el registro desde la interfaz, la recolección
-de seis métricas, el historial periódico, la tendencia y la navegación desde
-dashboard e inventario. Las pruebas automatizadas cubren la actualización del
-historial, la suspensión en pestañas ocultas, la prevención de solicitudes
-superpuestas, las acciones independientes de las filas y los formatos de fecha
-y unidades. No hubo errores ni advertencias en la consola del navegador.
+comprobó manualmente con Redis real el registro desde la interfaz, el historial
+periódico, la tendencia y la navegación desde dashboard e inventario. La
+integración automatizada actual confirma 27 métricas Redis y 20 MongoDB;
+la prueba del detalle verifica que todo el catálogo de la última muestra se
+represente en grupos de prioridad junto con su estado, fundamento y explicación,
+y que un intento fallido conserve como referencia la última muestra correcta.
+Las pruebas cubren
+además la actualización del historial, la
+suspensión en pestañas ocultas, la prevención de solicitudes superpuestas, las
+acciones independientes de las filas y los formatos de fecha y unidades. No
+hubo errores ni advertencias en la consola del navegador.
 
 ## Riesgos y trabajo pendiente
 
 | Prioridad | Hallazgo | Condición de cierre |
 |---|---|---|
 | Alta | Falta una prueba E2E contra el backend y PostgreSQL de prueba. | Automatizar registro, login, alta de instancia, historial, umbrales y alertas sin usar datos reales. |
-| Alta | Falta el despliegue reproducible y los encabezados HTTP de producción. | Incorporar frontend al compose/proxy y validar CSP, HSTS, `nosniff`, política de referencia y anti-framing. |
 | Media | El token es accesible a JavaScript mientras vive en `sessionStorage`. | Si el modelo de despliegue lo permite, migrar a una cookie `HttpOnly`, `Secure` y `SameSite`, definiendo la protección CSRF correspondiente. |
 | Media | El dashboard consulta una muestra por instancia. | Añadir un endpoint agregado de estado más reciente; mientras tanto el cliente limita la concurrencia a cuatro solicitudes. |
 | Media | No se ha validado capacidad en infraestructura objetivo. | Ejecutar la prueba de carga acordada y medir p95, throughput y errores. |
+| Media | Falta validar HTTPS y navegadores en el proveedor cloud elegido. | Ejecutar E2E contra un entorno de ensayo servido con certificado válido y registrar compatibilidad. |
 
 ## Dictamen
 
 El frontend constituye una base funcional, mantenible y coherente con el
-backend V1. Su calidad local está validada. La V1 completa todavía requiere
-E2E con servicios aislados y despliegue reproducible antes de considerarse
-preparada para producción.
+backend V1. Su calidad local y su contenedor con proxy/cabeceras de producción
+están validados. La V1 completa todavía requiere E2E con servicios aislados y
+un ensayo en la nube antes de considerarse preparada para producción.

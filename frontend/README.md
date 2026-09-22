@@ -47,6 +47,17 @@ recolecciones: el worker sigue siendo el único responsable de generarlas. La
 consulta automática se detiene cuando la instancia está pausada, la pantalla se
 desmonta o la pestaña queda oculta, y evita solicitudes superpuestas.
 
+El encabezado mantiene tres indicadores destacados por motor y la sección
+`Métricas actuales` presenta el catálogo completo de la última muestra: 20
+valores para MongoDB y 27 para Redis. Bytes, duraciones, razones, conexiones,
+operaciones y estados se convierten a unidades legibles sin alterar el valor persistido.
+La pantalla resume cuántas métricas son críticas, de advertencia, saludables o
+informativas. Las condiciones que requieren atención se despliegan primero; los
+valores saludables e informativos permanecen agrupados y se abren bajo demanda.
+Cada fila explica el estado, el riesgo y si el diagnóstico proviene de un umbral,
+una regla orientativa o contexto informativo. Si el último intento falla, la
+interfaz advierte el problema y conserva como referencia la última muestra correcta.
+
 ## Seguridad
 
 - No contiene secretos ni valores de conexión predeterminados.
@@ -75,3 +86,16 @@ npm run lint
 npm test
 npm run build
 ```
+
+## Contenedor de despliegue
+
+`frontend/Dockerfile` compila los recursos con Node y sirve únicamente el
+resultado estático mediante Nginx sin privilegios en el puerto interno `8080`.
+El proxy reenvía `/api/` a FastAPI por la red privada de Docker, por lo que el
+navegador utiliza un mismo origen y la dirección interna de la API no se expone.
+
+`frontend/nginx.conf` incorpora fallback para las rutas de React, endpoint
+`/healthz`, límite de cuerpo, ocultamiento de versión y cabeceras CSP, HSTS,
+`nosniff`, anti-framing, política de referencia y permisos. HSTS solo adquiere
+efecto real cuando el acceso público usa HTTPS; el certificado debe terminar en
+el balanceador o proxy de la nube.

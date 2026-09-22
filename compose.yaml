@@ -1,0 +1,127 @@
+name: ${COMPOSE_PROJECT_NAME:-db-health-monitor}
+
+x-backend-environment: &backend-environment
+  ENVIRONMENT: production
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL debe configurarse}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY debe configurarse}
+  CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?CREDENTIALS_ENCRYPTION_KEY debe configurarse}
+  CORS_ALLOWED_ORIGINS: "[]"
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  MONITORING_WORKER_POLL_SECONDS: ${MONITORING_WORKER_POLL_SECONDS:-5}
+  MONITORING_LEASE_SECONDS: ${MONITORING_LEASE_SECONDS:-90}
+  MONITORING_WORKER_BATCH_SIZE: ${MONITORING_WORKER_BATCH_SIZE:-25}
+
+x-backend-service: &backend-service
+  image: db-health-monitor-backend:${IMAGE_TAG:-local}
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  environment: *backend-environment
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=32m
+  networks:
+    - backend
+
+services:
+  postgres:
+    image: postgres:18.6-alpine3.24
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-db_health_monitor}
+      POSTGRES_USER: ${POSTGRES_USER:-db_health_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD debe configurarse}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  migrate:
+    <<: *backend-service
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend-service
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    init: true
+    networks:
+      - backend
+      - edge
+
+  worker:
+    <<: *backend-service
+    command: ["python", "-m", "app.workers.monitoring"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    init: true
+
+  frontend:
+    image: db-health-monitor-frontend:${IMAGE_TAG:-local}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - edge
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+  edge:

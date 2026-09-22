@@ -1,5 +1,7 @@
 export type DatabaseEngine = 'mongodb' | 'redis'
 export type HealthStatus = 'healthy' | 'warning' | 'critical' | 'unknown'
+export type MetricDiagnosticStatus = 'healthy' | 'warning' | 'critical' | 'informational'
+export type MetricDiagnosticBasis = 'threshold' | 'heuristic' | 'informational'
 export type AlertSeverity = 'warning' | 'critical'
 export type AlertStatus = 'open' | 'acknowledged' | 'resolved'
 
@@ -47,6 +49,9 @@ export interface MetricValue {
   display_name: string
   unit: string
   value: number
+  status: MetricDiagnosticStatus
+  diagnostic_basis: MetricDiagnosticBasis
+  message: string
 }
 
 export interface MonitoringHistory {

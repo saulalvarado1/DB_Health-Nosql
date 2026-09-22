@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from 'react'
 
-import type { AlertSeverity, AlertStatus, HealthStatus } from '../api/contracts'
+import type { AlertSeverity, AlertStatus, HealthStatus, MetricDiagnosticStatus } from '../api/contracts'
 import { alertStatusLabels, healthLabels } from '../core/format'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -53,13 +53,14 @@ export function Panel({ title, description, action, className = '', children }: 
   )
 }
 
-type BadgeStatus = HealthStatus | AlertStatus | AlertSeverity | 'enabled' | 'disabled'
+type BadgeStatus = HealthStatus | MetricDiagnosticStatus | AlertStatus | AlertSeverity | 'enabled' | 'disabled'
 
 const badgeLabels: Record<BadgeStatus, string> = {
   ...healthLabels,
   ...alertStatusLabels,
   warning: 'Advertencia',
   critical: 'Crítica',
+  informational: 'Informativa',
   enabled: 'Activa',
   disabled: 'Pausada',
 }

@@ -101,12 +101,12 @@ def list_monitoring_history(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[MonitoringHistoryResponse]:
-    samples = MonitoringHistoryService(session).list_for_owner(
+    entries = MonitoringHistoryService(session).list_for_owner(
         database_id=database_id,
         owner_id=current_user.id,
         limit=limit,
     )
-    return [monitoring_history_response(sample) for sample in samples]
+    return [monitoring_history_response(entry) for entry in entries]
 
 
 @router.post("/{database_id}/collect", response_model=MonitoringRunResponse)

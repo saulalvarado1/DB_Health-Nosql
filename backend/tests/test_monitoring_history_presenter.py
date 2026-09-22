@@ -3,6 +3,9 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from app.api.presenters import monitoring_history_response
+from app.domain.models import MetricDiagnosticBasis, MetricDiagnosticStatus
+from app.services.history import MonitoringHistoryEntry
+from app.services.metric_diagnostics import MetricDiagnostic
 
 
 def test_history_presenter_returns_normalized_metric_values_without_connection_data() -> None:
@@ -36,7 +39,23 @@ def test_history_presenter_returns_normalized_metric_values_without_connection_d
         ],
     )
 
-    response = monitoring_history_response(sample)
+    response = monitoring_history_response(
+        MonitoringHistoryEntry(
+            sample=sample,
+            diagnostics={
+                "used_memory_bytes": MetricDiagnostic(
+                    status=MetricDiagnosticStatus.INFORMATIONAL,
+                    basis=MetricDiagnosticBasis.INFORMATIONAL,
+                    message="La memoria absoluta necesita contexto.",
+                ),
+                "connected_clients": MetricDiagnostic(
+                    status=MetricDiagnosticStatus.HEALTHY,
+                    basis=MetricDiagnosticBasis.HEURISTIC,
+                    message="No se detectó presión de conexiones.",
+                ),
+            },
+        )
+    )
 
     assert response.health_score == 80
     assert response.health_status == "warning"
@@ -44,4 +63,7 @@ def test_history_presenter_returns_normalized_metric_values_without_connection_d
         "connected_clients",
         "used_memory_bytes",
     ]
+    assert response.metrics[0].status == "healthy"
+    assert response.metrics[0].diagnostic_basis == "heuristic"
+    assert response.metrics[0].message == "No se detectó presión de conexiones."
     assert "connection_uri" not in response.model_dump()

@@ -26,7 +26,7 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | RNF-PER-01 | Rendimiento | **Propuesto:** con 50 usuarios concurrentes, `GET /health` y consultas de listado deben mantener p95 menor o igual a 300 ms en el entorno objetivo. | Escenario reproducible con k6 o Locust; publicar el reporte de ejecución sin secretos. | `PENDIENTE` |
 | RNF-OBS-01 | Observabilidad | API y worker generan logs de nivel configurable, sin secretos, y exponen health/readiness para supervisión. | Revisión de configuración, pruebas de no filtrado y verificación manual de endpoints. | `PARCIAL` |
 | RNF-MAN-01 | Mantenibilidad | El código mantiene las capas rutas → servicios → repositorios/conectores y supera pruebas y linter. | `pytest` y `ruff check backend` desde el directorio `backend`. | `VALIDADO` |
-| RNF-DES-01 | Desplegabilidad | El sistema se puede iniciar con contenedores, migrar la base automáticamente y recibir configuración únicamente mediante variables de entorno. | `Dockerfile`, composición de servicios, health checks y prueba de arranque limpio. | `PENDIENTE` |
+| RNF-DES-01 | Desplegabilidad | El sistema se puede iniciar con contenedores, migrar la base automáticamente y recibir configuración únicamente mediante variables de entorno. | `backend/Dockerfile`, `frontend/Dockerfile`, `compose.yaml`, health checks y la prueba de arranque limpio documentada en `deployment-audit.md`. | `VALIDADO` |
 | RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan CORS. El cliente React supera TypeScript, ESLint, pruebas unitarias, compilación y revisión responsive; faltan E2E en los navegadores acordados. | `PARCIAL` |
 
 ## Línea base actual
@@ -34,13 +34,13 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 El 21 de septiembre de 2026, la suite normal del backend produjo:
 
 ```text
-34 passed, 3 skipped, 2 warnings
+45 passed, 3 skipped, 2 warnings
 ```
 
 El script reproducible con PostgreSQL, Redis y MongoDB reales de prueba produjo:
 
 ```text
-3 passed, 34 deselected, 2 warnings
+3 passed, 45 deselected, 2 warnings
 ```
 
 Las dos advertencias son deprecaciones de dependencias usadas por el cliente de pruebas de FastAPI/Starlette. No son fallos de los requisitos ni deben resolverse instalando paquetes al azar; se atenderán al actualizar de manera compatible las dependencias de desarrollo.
@@ -49,8 +49,9 @@ Los tres casos omitidos en la suite normal requieren servicios externos y
 variables `TEST_*`. `backend/scripts/run_real_services_integration.ps1` los
 levanta de forma aislada y acredita aislamiento entre usuarios, concurrencia
 PostgreSQL, permisos de solo lectura, recolección real Redis/MongoDB, historial y
-ciclo de alertas. Esta línea base todavía no demuestra rendimiento ni despliegue
-en nube.
+ciclo de alertas. La composición del sistema completo también superó un arranque
+limpio local; esta línea base todavía no demuestra rendimiento ni operación en
+un proveedor de nube concreto.
 
 ## Evidencia por cada entrega
 
@@ -70,13 +71,14 @@ No se incluirán tokens JWT, contraseñas, URI de producción ni contenido del a
 
 ## Próximo bloque de validación
 
-El ciclo completo de monitoreo del backend ya quedó validado. El siguiente
-incremento se enfocará en:
+El ciclo completo de monitoreo y el despliegue reproducible local ya quedaron
+validados. El siguiente incremento se enfocará en:
 
-1. Contenedores de despliegue y prueba de arranque limpio del sistema completo.
-2. Prueba de carga en un entorno con infraestructura definida.
-3. Pruebas E2E del frontend React en los navegadores acordados.
-4. Métricas operativas y trazabilidad para cerrar observabilidad.
+1. Prueba de carga en un entorno con infraestructura definida.
+2. Pruebas E2E del frontend React en los navegadores acordados.
+3. Métricas operativas y trazabilidad para cerrar observabilidad.
+4. Despliegue de ensayo con HTTPS, copias de seguridad y secretos administrados
+   en el proveedor elegido.
 
-La evidencia detallada de este cierre se encuentra en
-`docs/backend-v1-audit.md`.
+La evidencia detallada se encuentra en `docs/backend-v1-audit.md` y
+`docs/deployment-audit.md`.

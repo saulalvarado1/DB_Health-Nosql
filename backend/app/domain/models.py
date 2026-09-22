@@ -17,6 +17,19 @@ class HealthStatus(StrEnum):
     UNKNOWN = "unknown"
 
 
+class MetricDiagnosticStatus(StrEnum):
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    CRITICAL = "critical"
+    INFORMATIONAL = "informational"
+
+
+class MetricDiagnosticBasis(StrEnum):
+    THRESHOLD = "threshold"
+    HEURISTIC = "heuristic"
+    INFORMATIONAL = "informational"
+
+
 @dataclass(frozen=True, slots=True)
 class MetricSample:
     database_id: UUID

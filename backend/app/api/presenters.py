@@ -5,7 +5,8 @@ from app.api.schemas.monitoring import (
 )
 from app.api.schemas.thresholds import ThresholdProfileResponse, ThresholdRuleResponse
 from app.domain.models import HealthStatus
-from app.infrastructure.persistence.models import MetricSample, MonitoredDatabase, ThresholdProfile
+from app.infrastructure.persistence.models import MonitoredDatabase, ThresholdProfile
+from app.services.history import MonitoringHistoryEntry
 
 
 def monitored_database_response(database: MonitoredDatabase) -> MonitoredDatabaseResponse:
@@ -22,8 +23,9 @@ def monitored_database_response(database: MonitoredDatabase) -> MonitoredDatabas
     )
 
 
-def monitoring_history_response(sample: MetricSample) -> MonitoringHistoryResponse:
+def monitoring_history_response(entry: MonitoringHistoryEntry) -> MonitoringHistoryResponse:
     """Presenta evidencia histórica normalizada y excluye secretos de conexión."""
+    sample = entry.sample
     assessment = sample.health_assessment
     if assessment is None:
         raise RuntimeError("La muestra no tiene una evaluación de salud asociada.")
@@ -41,6 +43,9 @@ def monitoring_history_response(sample: MetricSample) -> MonitoringHistoryRespon
                 display_name=value.metric_definition.display_name,
                 unit=value.metric_definition.unit,
                 value=float(value.numeric_value),
+                status=entry.diagnostics[value.metric_definition.code].status,
+                diagnostic_basis=entry.diagnostics[value.metric_definition.code].basis,
+                message=entry.diagnostics[value.metric_definition.code].message,
             )
             for value in sorted(sample.values, key=lambda item: item.metric_definition.code)
         ],

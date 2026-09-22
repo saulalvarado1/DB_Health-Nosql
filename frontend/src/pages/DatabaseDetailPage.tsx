@@ -4,10 +4,16 @@ import { Link, useParams } from 'react-router-dom'
 import type { MonitoredDatabase, MonitoringHistory } from '../api/contracts'
 import { databasesApi } from '../api/resources'
 import { HealthChart } from '../components/HealthChart'
+import { MetricCatalog } from '../components/MetricCatalog'
 import { Button, EmptyState, ErrorNotice, LoadingState, PageHeading, Panel, StatusBadge, SuccessNotice } from '../components/ui'
 import { getErrorMessage } from '../core/errors'
 import { formatDate, formatDateWithSeconds, formatMetric, formatTimeWithSeconds } from '../core/format'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
+
+const featuredMetricCodes: Record<MonitoredDatabase['engine'], string[]> = {
+  mongodb: ['availability', 'connections_current', 'memory_resident_mb'],
+  redis: ['availability', 'connected_clients', 'memory_usage_percent'],
+}
 
 export function DatabaseDetailPage() {
   const { databaseId = '' } = useParams()
@@ -69,7 +75,22 @@ export function DatabaseDetailPage() {
   })
 
   const latest = history[0] ?? null
-  const latestMetrics = useMemo(() => latest?.metrics ?? [], [latest])
+  const latestSuccessfulSample = useMemo(
+    () => history.find((sample) => sample.collection_succeeded && sample.metrics.length > 0) ?? null,
+    [history],
+  )
+  const metricSample = latest?.metrics.length ? latest : latestSuccessfulSample
+  const latestMetrics = useMemo(() => metricSample?.metrics ?? [], [metricSample])
+  const isShowingPreviousMetrics = Boolean(
+    latest && metricSample && latest.sample_id !== metricSample.sample_id,
+  )
+  const featuredMetrics = useMemo(() => {
+    if (!database) return []
+    const metricsByCode = new Map(latestMetrics.map((metric) => [metric.code, metric]))
+    return featuredMetricCodes[database.engine]
+      .map((code) => metricsByCode.get(code))
+      .filter((metric) => metric !== undefined)
+  }, [database, latestMetrics])
 
   async function collectNow() {
     setBusyAction('collect')
@@ -147,15 +168,36 @@ export function DatabaseDetailPage() {
       {error && <ErrorNotice message={error} />}
       {refreshError && <ErrorNotice message={refreshError} />}
       {success && <SuccessNotice message={success} />}
+      {isShowingPreviousMetrics && metricSample && (
+        <ErrorNotice
+          message={`La última recolección no obtuvo métricas. Se muestran como referencia los últimos valores correctos del ${formatDateWithSeconds(metricSample.collected_at)}.`}
+        />
+      )}
 
       {database && (
         <>
           <section className="metric-grid">
             <article className="metric-card"><span>Puntaje de salud</span><strong>{latest ? latest.health_score : '—'}</strong><small>{latest ? <StatusBadge status={latest.health_status} /> : 'Sin muestras'}</small></article>
-            {latestMetrics.slice(0, 3).map((metric) => (
+            {featuredMetrics.map((metric) => (
               <article className="metric-card" key={metric.code}><span>{metric.display_name}</span><strong>{formatMetric(metric.value, metric.unit)}</strong><small className="mono">{metric.code}</small></article>
             ))}
           </section>
+
+          <Panel
+            title="Métricas actuales"
+            description={metricSample
+              ? `${isShowingPreviousMetrics ? 'Última muestra correcta' : 'Última muestra'}: ${formatDateWithSeconds(metricSample.collected_at)}. Abre cada grupo para consultar sus diagnósticos; solo los umbrales configurados afectan el puntaje y las alertas.`
+              : 'Todavía no existe una muestra para esta instancia.'}
+          >
+            {latestMetrics.length ? (
+              <MetricCatalog metrics={latestMetrics} />
+            ) : (
+              <EmptyState
+                title="Sin métricas"
+                message="Ejecuta una recolección o espera al siguiente ciclo del worker."
+              />
+            )}
+          </Panel>
 
           <div className="detail-grid">
             <Panel title="Tendencia de salud" description="Puntaje de las últimas 50 evaluaciones.">

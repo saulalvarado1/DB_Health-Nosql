@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.domain.models import HealthStatus
+from app.domain.models import HealthStatus, MetricDiagnosticBasis, MetricDiagnosticStatus
 from app.services.monitoring import MonitoringRunResult
 
 
@@ -32,6 +32,9 @@ class MetricValueHistoryResponse(BaseModel):
     display_name: str
     unit: str
     value: float
+    status: MetricDiagnosticStatus
+    diagnostic_basis: MetricDiagnosticBasis
+    message: str
 
 
 class MonitoringHistoryResponse(BaseModel):

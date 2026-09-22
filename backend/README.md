@@ -72,6 +72,24 @@ conexión falló.
 La instancia se configura con `PATCH /api/v1/databases/{database_id}` (nombre,
 intervalo o estado) y se elimina con `DELETE /api/v1/databases/{database_id}`.
 
+## Métricas
+
+Cada recolección correcta guarda 20 métricas para MongoDB o 27 para Redis. Los
+conectores solo ejecutan `ping` y operaciones administrativas de lectura
+(`serverStatus` en MongoDB e `INFO` en Redis). El significado, la unidad y la
+interpretación de cada indicador están documentados en
+[`docs/metric-catalog.md`](../docs/metric-catalog.md).
+
+El historial añade a cada valor un estado, la base del diagnóstico y un mensaje
+explicativo. La interpretación usa primero los umbrales configurados; cuando no
+existen, aplica reglas orientativas conservadoras o marca el dato como
+informativo. Los contadores acumulados se comparan con la muestra anterior.
+
+Ampliar el catálogo no cambia automáticamente la puntuación. Los umbrales
+predeterminados continúan limitados a disponibilidad en ambos motores y uso de
+memoria en Redis; así se evita generar alertas falsas con contadores acumulados
+o indicadores cuyo valor saludable depende de cada instalación.
+
 ## Umbrales
 
 Consulta las reglas asignadas con `GET /api/v1/databases/{database_id}/thresholds`.
@@ -85,6 +103,14 @@ La forma recomendada de ejecutar todas las pruebas de integración es:
 
 ```powershell
 .\scripts\run_real_services_integration.ps1
+```
+
+Por defecto utiliza los puertos aislados `55432` (PostgreSQL), `6381` (Redis)
+y `27019` (MongoDB), de modo que puede convivir con los contenedores locales
+documentados. Si alguno está ocupado, se puede reemplazar sin editar el script:
+
+```powershell
+.\scripts\run_real_services_integration.ps1 -MongoPort 27020
 ```
 
 El script crea contenedores temporales con versiones fijadas de PostgreSQL,
@@ -138,3 +164,21 @@ y que otro worker puede recuperarla después de su vencimiento.
 El caso de servicios reales comprueba usuarios de monitoreo de solo lectura,
 recolección de métricas Redis y MongoDB, tres muestras históricas independientes,
 cifrado de las URI y el ciclo de alerta `open` → `acknowledged` → `resolved`.
+
+## Contenedor de despliegue
+
+`backend/Dockerfile` construye una sola imagen para la API, el worker y la tarea
+de migración. Instala el proyecto como wheel en una etapa separada y lo ejecuta
+con el usuario no privilegiado `10001`, sin incluir pruebas, archivos `.env` ni
+el entorno virtual local.
+
+La composición raíz configura tres usos de esa imagen:
+
+- `migrate`: aplica `alembic upgrade head` y debe terminar correctamente;
+- `api`: publica FastAPI solo dentro de las redes de Docker;
+- `worker`: ejecuta el monitoreo periódico como proceso independiente.
+
+Las credenciales se reciben por variables de entorno. En un proveedor cloud se
+deben inyectar desde su gestor de secretos y no almacenarlas en la imagen, en el
+repositorio ni en los logs. Consulta la ejecución completa en
+[`docs/deployment-audit.md`](../docs/deployment-audit.md).

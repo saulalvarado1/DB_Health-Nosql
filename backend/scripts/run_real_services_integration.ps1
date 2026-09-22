@@ -1,5 +1,12 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidateRange(1, 65535)]
+    [int]$PostgresPort = 55432,
+    [ValidateRange(1, 65535)]
+    [int]$RedisPort = 6381,
+    [ValidateRange(1, 65535)]
+    [int]$MongoPort = 27019
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -28,9 +35,15 @@ $containers = @{
 $createdContainers = [System.Collections.Generic.List[string]]::new()
 
 function New-RandomPassword {
-    return [Convert]::ToHexString(
-        [Security.Cryptography.RandomNumberGenerator]::GetBytes(24)
-    ).ToLowerInvariant()
+    $bytes = New-Object byte[] 24
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($bytes)
+    }
+    finally {
+        $generator.Dispose()
+    }
+    return ([BitConverter]::ToString($bytes) -replace "-", "").ToLowerInvariant()
 }
 
 function Assert-ContainerNameAvailable([string]$Name) {
@@ -42,7 +55,13 @@ function Assert-ContainerNameAvailable([string]$Name) {
 
 function Wait-ForService([scriptblock]$Probe, [string]$Description, [int]$Attempts = 60) {
     for ($attempt = 0; $attempt -lt $Attempts; $attempt++) {
-        & $Probe
+        try {
+            & $Probe
+        }
+        catch {
+            # El servicio puede rechazar conexiones durante sus primeros segundos.
+            # El código de salida decide si corresponde reintentar.
+        }
         if ($LASTEXITCODE -eq 0) {
             return
         }
@@ -65,7 +84,7 @@ try {
         --name $containers.postgres `
         --label com.db-health-monitor.test=true `
         --detach `
-        --publish 127.0.0.1:55432:5432 `
+        --publish "127.0.0.1:${PostgresPort}:5432" `
         --env POSTGRES_DB=db_health_monitor_test `
         --env POSTGRES_USER=db_health_test_app `
         --env "POSTGRES_PASSWORD=$postgresPassword" `
@@ -79,7 +98,7 @@ try {
         --name $containers.redis `
         --label com.db-health-monitor.test=true `
         --detach `
-        --publish 127.0.0.1:6381:6379 `
+        --publish "127.0.0.1:${RedisPort}:6379" `
         redis:8.10.1-alpine `
         redis-server `
         --maxmemory 64mb `
@@ -94,7 +113,7 @@ try {
         --name $containers.mongodb `
         --label com.db-health-monitor.test=true `
         --detach `
-        --publish 127.0.0.1:27018:27017 `
+        --publish "127.0.0.1:${MongoPort}:27017" `
         --env MONGO_INITDB_ROOT_USERNAME=root `
         --env "MONGO_INITDB_ROOT_PASSWORD=$mongoRootPassword" `
         mongo:8.0.32-noble | Out-Null
@@ -147,11 +166,11 @@ try {
     $encodedRedisPassword = [uri]::EscapeDataString($redisPassword)
     $encodedMongoPassword = [uri]::EscapeDataString($mongoMonitorPassword)
     $env:DATABASE_URL = "postgresql+psycopg://db_health_test_app:" +
-        "$encodedPostgresPassword@127.0.0.1:55432/db_health_monitor_test"
+        "$encodedPostgresPassword@127.0.0.1:${PostgresPort}/db_health_monitor_test"
     $env:TEST_DATABASE_URL = $env:DATABASE_URL
-    $env:TEST_REDIS_URI = "redis://monitor:$encodedRedisPassword@127.0.0.1:6381/0"
+    $env:TEST_REDIS_URI = "redis://monitor:$encodedRedisPassword@127.0.0.1:${RedisPort}/0"
     $env:TEST_MONGODB_URI = "mongodb://monitor:$encodedMongoPassword@" +
-        "127.0.0.1:27018/admin?authSource=admin"
+        "127.0.0.1:${MongoPort}/admin?authSource=admin"
 
     Push-Location (Join-Path $PSScriptRoot "..")
     try {
