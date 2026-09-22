@@ -1,0 +1,69 @@
+services:
+  redis-e2e:
+    image: redis:8.10.1-alpine
+    command:
+      - redis-server
+      - --aclfile
+      - /usr/local/etc/redis/users.acl
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - "no"
+    environment:
+      REDISCLI_AUTH: ${E2E_REDIS_MONITOR_PASSWORD:?E2E_REDIS_MONITOR_PASSWORD debe configurarse}
+    volumes:
+      - type: bind
+        source: ${E2E_REDIS_ACL_FILE:?E2E_REDIS_ACL_FILE debe configurarse}
+        target: /usr/local/etc/redis/users.acl
+        read_only: true
+    healthcheck:
+      test: ["CMD", "redis-cli", "--user", "monitor", "PING"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  mongodb-e2e:
+    image: mongo:8.0.32-noble
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${E2E_MONGO_ROOT_PASSWORD:?E2E_MONGO_ROOT_PASSWORD debe configurarse}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet
+          --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}"
+          --authenticationDatabase admin
+          --eval "quit(db.adminCommand({ping:1}).ok ? 0 : 2)"
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  api:
+    depends_on:
+      redis-e2e:
+        condition: service_healthy
+      mongodb-e2e:
+        condition: service_healthy
+
+  worker:
+    depends_on:
+      redis-e2e:
+        condition: service_healthy
+      mongodb-e2e:
+        condition: service_healthy

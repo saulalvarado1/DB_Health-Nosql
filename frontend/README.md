@@ -87,6 +87,19 @@ npm test
 npm run build
 ```
 
+La validación integrada se inicia desde la raíz del repositorio:
+
+```powershell
+.\deploy\run-e2e.ps1
+```
+
+Ejecuta antes `npm install` en `frontend` si todavía no instalaste las
+dependencias. El script utiliza Microsoft Edge o Google Chrome si están
+instalados y, en caso contrario, instala Chromium con Playwright. Las
+credenciales y URI generadas viven solo durante la ejecución;
+las capturas se conservan únicamente cuando falla una prueba y los trazados y
+videos están deshabilitados para reducir el riesgo de registrar secretos.
+
 ## Contenedor de despliegue
 
 `frontend/Dockerfile` compila los recursos con Node y sirve únicamente el

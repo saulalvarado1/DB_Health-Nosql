@@ -60,6 +60,7 @@ npm run lint   → sin errores ni advertencias
 npm test       → 7 archivos, 21 pruebas aprobadas
 npm run build  → compilación de producción correcta
 npm audit --omit=dev → 0 vulnerabilidades
+run-e2e.ps1    → 1 prueba E2E aprobada en Microsoft Edge
 pytest -m "not integration" → 45 passed, 3 deselected, 2 warnings
 ruff check     → All checks passed
 ```
@@ -77,11 +78,17 @@ suspensión en pestañas ocultas, la prevención de solicitudes superpuestas, la
 acciones independientes de las filas y los formatos de fecha y unidades. No
 hubo errores ni advertencias en la consola del navegador.
 
+El E2E levanta PostgreSQL, API, worker, frontend, Redis y MongoDB en un proyecto
+Docker temporal. Desde un navegador real valida registro y nuevo login, alta de
+ambos motores, recolección automática y manual, catálogos de 27 y 20 métricas,
+edición de umbrales, apertura, reconocimiento y resolución de una alerta, pausa,
+reactivación y eliminación. La ejecución descubrió y permitió corregir una
+incompatibilidad entre el borrado ORM y la cascada de alertas en PostgreSQL.
+
 ## Riesgos y trabajo pendiente
 
 | Prioridad | Hallazgo | Condición de cierre |
 |---|---|---|
-| Alta | Falta una prueba E2E contra el backend y PostgreSQL de prueba. | Automatizar registro, login, alta de instancia, historial, umbrales y alertas sin usar datos reales. |
 | Media | El token es accesible a JavaScript mientras vive en `sessionStorage`. | Si el modelo de despliegue lo permite, migrar a una cookie `HttpOnly`, `Secure` y `SameSite`, definiendo la protección CSRF correspondiente. |
 | Media | El dashboard consulta una muestra por instancia. | Añadir un endpoint agregado de estado más reciente; mientras tanto el cliente limita la concurrencia a cuatro solicitudes. |
 | Media | No se ha validado capacidad en infraestructura objetivo. | Ejecutar la prueba de carga acordada y medir p95, throughput y errores. |
@@ -91,5 +98,6 @@ hubo errores ni advertencias en la consola del navegador.
 
 El frontend constituye una base funcional, mantenible y coherente con el
 backend V1. Su calidad local y su contenedor con proxy/cabeceras de producción
-están validados. La V1 completa todavía requiere E2E con servicios aislados y
-un ensayo en la nube antes de considerarse preparada para producción.
+están validados, incluido el recorrido E2E con servicios aislados. La V1 todavía
+requiere un ensayo en la nube, carga y observabilidad antes de considerarse
+preparada para producción.

@@ -6,3 +6,6 @@ dist
 node_modules
 npm-debug.log*
 **/*.tsbuildinfo
+e2e
+playwright-report
+test-results

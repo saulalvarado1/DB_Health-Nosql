@@ -19,7 +19,7 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | RNF-SEC-01 | Configuración segura | La aplicación no inicia sin `DATABASE_URL`, `JWT_SECRET_KEY` y `CREDENTIALS_ENCRYPTION_KEY`. No hay valores secretos por defecto en código. | `backend/tests/test_config.py` comprueba la ausencia de cada variable. | `VALIDADO` |
 | RNF-SEC-02 | Confidencialidad | Las URI y contraseñas de bases monitorizadas se cifran en el almacén interno y no aparecen en respuestas ni logs. | `test_security.py`, `test_monitoring_worker.py`, `test_tenant_isolation_integration.py` y `test_real_services_integration.py` comprueban cifrado real en PostgreSQL, respuestas sin URI y logs sin contraseñas. | `VALIDADO` |
 | RNF-SEC-03 | Autenticación y autorización | Toda ruta de datos exige JWT válido; un usuario no puede leer, modificar, recolectar ni eliminar instancias de otro usuario. | `test_security.py` valida los tokens y `test_tenant_isolation_integration.py` verifica con dos usuarios y PostgreSQL real que las rutas ajenas devuelven `404`. | `VALIDADO` |
-| RNF-DAT-01 | Integridad | Los datos históricos no se sobrescriben; métricas, reglas, perfiles y alertas mantienen sus claves foráneas y restricciones. | Migraciones Alembic, modelo 3FN, pruebas de esquemas y umbrales, y `test_real_services_integration.py`, que conserva tres muestras Redis con identificadores distintos. | `VALIDADO` |
+| RNF-DAT-01 | Integridad | Los datos históricos no se sobrescriben; métricas, reglas, perfiles y alertas mantienen sus claves foráneas y restricciones. | Migraciones Alembic, modelo 3FN, pruebas de esquemas y umbrales, `test_real_services_integration.py`, que conserva tres muestras Redis con identificadores distintos, y E2E que elimina una instancia con historial y alertas mediante cascada controlada. | `VALIDADO` |
 | RNF-DIS-01 | Disponibilidad | `GET /health` informa que el proceso vive sin depender de PostgreSQL. `GET /health/ready` devuelve `503` si PostgreSQL no responde. | `backend/tests/test_health_routes.py`. | `VALIDADO` |
 | RNF-CON-01 | Concurrencia | Dos workers no procesan la misma programación durante una reserva vigente; tras vencer la reserva, otro worker puede retomarla. | `test_worker_concurrency_integration.py` mantiene un bloqueo real entre dos conexiones PostgreSQL, verifica `SKIP LOCKED`, evita duplicados y recupera reservas vencidas. | `VALIDADO` |
 | RNF-RES-01 | Tolerancia a fallos | Si falla una recolección, se registra un resultado seguro, la programación se libera y el siguiente ciclo puede continuar. | `backend/tests/test_monitoring_worker.py` y prueba manual con Redis inaccesible. | `VALIDADO` |
@@ -27,7 +27,7 @@ Este documento transforma los atributos de calidad del proyecto en criterios ver
 | RNF-OBS-01 | Observabilidad | API y worker generan logs de nivel configurable, sin secretos, y exponen health/readiness para supervisión. | Revisión de configuración, pruebas de no filtrado y verificación manual de endpoints. | `PARCIAL` |
 | RNF-MAN-01 | Mantenibilidad | El código mantiene las capas rutas → servicios → repositorios/conectores y supera pruebas y linter. | `pytest` y `ruff check backend` desde el directorio `backend`. | `VALIDADO` |
 | RNF-DES-01 | Desplegabilidad | El sistema se puede iniciar con contenedores, migrar la base automáticamente y recibir configuración únicamente mediante variables de entorno. | `backend/Dockerfile`, `frontend/Dockerfile`, `compose.yaml`, health checks y la prueba de arranque limpio documentada en `deployment-audit.md`. | `VALIDADO` |
-| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan CORS. El cliente React supera TypeScript, ESLint, pruebas unitarias, compilación y revisión responsive; faltan E2E en los navegadores acordados. | `PARCIAL` |
+| RNF-COM-01 | Compatibilidad | La API publica contrato OpenAPI y el frontend funciona en navegadores definidos por el equipo. | `/docs` y `test_cors.py` validan CORS. El cliente React supera TypeScript, ESLint, pruebas unitarias, compilación, revisión responsive y un E2E completo en Microsoft Edge; falta acordar y validar la matriz final de navegadores. | `PARCIAL` |
 
 ## Línea base actual
 
@@ -53,6 +53,10 @@ ciclo de alertas. La composición del sistema completo también superó un arran
 limpio local; esta línea base todavía no demuestra rendimiento ni operación en
 un proveedor de nube concreto.
 
+La prueba `deploy/run-e2e.ps1` produjo `1 passed` en Microsoft Edge contra siete
+servicios Docker aislados. Validó el recorrido completo del usuario y eliminó
+sus contenedores, redes, volumen y secretos temporales al finalizar.
+
 ## Evidencia por cada entrega
 
 Cada requisito marcado como `VALIDADO` debe poder señalar una prueba, un comando o un reporte. El formato recomendado para una evidencia es:
@@ -75,10 +79,10 @@ El ciclo completo de monitoreo y el despliegue reproducible local ya quedaron
 validados. El siguiente incremento se enfocará en:
 
 1. Prueba de carga en un entorno con infraestructura definida.
-2. Pruebas E2E del frontend React en los navegadores acordados.
+2. Ampliar el E2E aprobado a la matriz de navegadores que acuerde el equipo.
 3. Métricas operativas y trazabilidad para cerrar observabilidad.
 4. Despliegue de ensayo con HTTPS, copias de seguridad y secretos administrados
    en el proveedor elegido.
 
-La evidencia detallada se encuentra en `docs/backend-v1-audit.md` y
-`docs/deployment-audit.md`.
+La evidencia detallada se encuentra en `docs/backend-v1-audit.md`,
+`docs/deployment-audit.md` y `docs/e2e-audit.md`.

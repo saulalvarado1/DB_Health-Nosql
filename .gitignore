@@ -14,3 +14,5 @@ frontend/.env.local
 frontend/.env.*.local
 *.tsbuildinfo
 coverage/
+playwright-report/
+test-results/

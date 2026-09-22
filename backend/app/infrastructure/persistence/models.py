@@ -90,7 +90,9 @@ class MonitoredDatabase(TimestampedModel, Base):
     samples: Mapped[list["MetricSample"]] = relationship(
         back_populates="monitored_database", cascade="all, delete-orphan"
     )
-    alerts: Mapped[list["Alert"]] = relationship(back_populates="monitored_database")
+    alerts: Mapped[list["Alert"]] = relationship(
+        back_populates="monitored_database", passive_deletes=True
+    )
 
 
 class MonitoringSchedule(TimestampedModel, Base):

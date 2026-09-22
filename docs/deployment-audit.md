@@ -27,6 +27,8 @@ forma de ejecutar los procesos y de entregarles configuración.
 | `compose.yaml` | Orquesta PostgreSQL, migración, API, worker y frontend con dependencias y healthchecks. |
 | `.env.deploy.example` | Documenta únicamente nombres y valores de ejemplo, sin secretos utilizables. |
 | `deploy/generate-env.ps1` | Genera secretos aleatorios sin imprimirlos y se niega a reemplazar un archivo existente. |
+| `compose.e2e.yaml` | Añade Redis y MongoDB aislados con cuentas de monitoreo de privilegio mínimo. |
+| `deploy/run-e2e.ps1` | Orquesta el navegador y los siete servicios temporales, y garantiza su limpieza. |
 | `.dockerignore` | Evita enviar secretos, dependencias locales, pruebas y cachés al contexto de construcción. |
 
 ## Arquitectura comprobada
@@ -99,6 +101,8 @@ UID de API                            10001
 UID de frontend                       101
 Enlaces de puertos de API             {}
 Cabeceras de seguridad                presentes
+E2E navegador + siete servicios       1 passed
+Recursos E2E después de finalizar     eliminados
 ```
 
 La imagen frontend se construyó con Node `22.22.2`, versión compatible con los
@@ -146,7 +150,6 @@ pasar preferentemente a un servicio administrado; el código funcional no cambia
 
 | Prioridad | Pendiente | Evidencia necesaria |
 |---|---|---|
-| Alta | E2E del flujo completo | Registro, login, alta MongoDB/Redis, historial, umbrales y alertas en entorno aislado. |
 | Alta | Ensayo en el proveedor elegido | HTTPS real, secretos administrados, persistencia y restauración verificadas. |
 | Media | Capacidad | k6 o Locust con p95, throughput y tasa de error en infraestructura objetivo. |
 | Media | Observabilidad | Métricas, trazas/correlación y alertas operativas sin datos sensibles. |
@@ -156,5 +159,5 @@ pasar preferentemente a un servicio administrado; el código funcional no cambia
 
 RNF-DES-01 queda `VALIDADO` para despliegue reproducible local. El sistema ya
 tiene una ruta segura y repetible hacia la nube, pero aún no debe declararse
-listo para producción hasta ejecutar el ensayo cloud, E2E, carga, respaldo y
-observabilidad indicados.
+listo para producción hasta ejecutar el ensayo cloud, carga, respaldo y
+observabilidad indicados. El E2E local del flujo completo ya quedó validado.

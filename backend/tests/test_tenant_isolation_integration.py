@@ -7,7 +7,7 @@ db_health_monitor_test. Las URI usadas son ficticias y nunca se recolectan.
 import os
 from collections.abc import Generator
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -194,5 +194,15 @@ def test_second_user_cannot_access_another_users_data(
         assert stored_database is not None
         assert stored_database.connection_uri_encrypted != connection_uri
         assert connection_uri not in stored_database.connection_uri_encrypted
+    finally:
+        session.close()
+
+    deleted = client.delete(f"/api/v1/databases/{database_id}", headers=owner_headers)
+    assert deleted.status_code == 204, deleted.text
+
+    session = integration_session_factory()
+    try:
+        assert session.get(MonitoredDatabase, UUID(database_id)) is None
+        assert session.get(Alert, UUID(alert_id)) is None
     finally:
         session.close()

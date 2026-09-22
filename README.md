@@ -34,3 +34,20 @@ proveedor protejan explícitamente el puerto publicado.
 
 La evidencia, los controles y las diferencias entre la prueba local y una nube
 real están en [`docs/deployment-audit.md`](docs/deployment-audit.md).
+
+## Prueba E2E aislada
+
+La prueba de extremo a extremo crea un proyecto Docker temporal con PostgreSQL,
+API, worker, frontend, Redis y MongoDB reales. Ejecuta el recorrido desde un
+navegador y elimina al terminar únicamente los contenedores, redes, volumen y
+secretos temporales de ese proyecto:
+
+```powershell
+.\deploy\run-e2e.ps1
+```
+
+El recorrido valida registro, nuevo inicio de sesión, recolección automática y
+manual, 27 métricas Redis, 20 métricas MongoDB, umbrales, apertura,
+reconocimiento y resolución de alertas, pausa, reactivación y eliminación. No
+usa ni modifica las bases locales del desarrollador. La auditoría completa está
+en [`docs/e2e-audit.md`](docs/e2e-audit.md).
