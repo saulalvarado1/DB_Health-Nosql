@@ -1,6 +1,9 @@
+import json
+import re
+from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_session
@@ -20,6 +23,7 @@ from app.infrastructure.repositories.monitored_databases import MonitoredDatabas
 from app.services.database_registry import DatabaseRegistryService
 from app.services.history import MonitoringHistoryService
 from app.services.monitoring import MonitoringService
+from app.services.reports import ReportExportService
 
 router = APIRouter(prefix="/databases")
 
@@ -124,3 +128,47 @@ def collect_metrics_now(
         connectors=build_connector_registry(),
     ).collect_once(database)
     return MonitoringRunResponse.from_result(result)
+
+
+@router.get("/{database_id}/export")
+def export_health_report(
+    database_id: UUID,
+    format: str = Query(default="csv", pattern="^(csv|json)$"),
+    limit: int = Query(default=100, ge=1, le=500),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Response:
+    database = MonitoredDatabaseRepository(session).get_for_owner(database_id, current_user.id)
+    if database is None:
+        raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
+
+    entries = MonitoringHistoryService(session).list_for_owner(
+        database_id=database_id,
+        owner_id=current_user.id,
+        limit=limit,
+    )
+    report_service = ReportExportService(database, entries)
+    slug = re.sub(r"[^a-zA-Z0-9_\-]+", "_", database.name).strip("_").lower() or "db"
+    date_str = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+
+    if format == "json":
+        data = report_service.export_json()
+        content = json.dumps(data, indent=2, ensure_ascii=False)
+        return Response(
+            content=content,
+            media_type="application/json; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="reporte_salud_{slug}_{date_str}.json"'
+            },
+        )
+
+    csv_content = report_service.export_csv()
+    content_with_bom = "\ufeff" + csv_content
+    return Response(
+        content=content_with_bom,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="reporte_salud_{slug}_{date_str}.csv"'
+        },
+    )
+

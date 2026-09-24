@@ -16,3 +16,4 @@ frontend/.env.*.local
 coverage/
 playwright-report/
 test-results/
+.railway/

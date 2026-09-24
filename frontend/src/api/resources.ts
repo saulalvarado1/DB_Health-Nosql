@@ -48,6 +48,11 @@ export const databasesApi = {
       `/databases/${segment(databaseId)}/thresholds/${segment(metricCode)}`,
       payload,
     ),
+  exportReport: (databaseId: string, format: 'csv' | 'json' = 'csv', limit = 100) =>
+    httpClient.download(
+      `/databases/${segment(databaseId)}/export?format=${format}&limit=${limit}`,
+      `reporte_salud_${databaseId}.${format}`,
+    ),
 }
 
 export const alertsApi = {

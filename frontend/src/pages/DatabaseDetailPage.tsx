@@ -26,7 +26,25 @@ export function DatabaseDetailPage() {
   const [success, setSuccess] = useState('')
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [busyAction, setBusyAction] = useState<'collect' | 'save' | 'toggle' | null>(null)
+  const [busyAction, setBusyAction] = useState<
+    'collect' | 'save' | 'toggle' | 'export-csv' | 'export-json' | null
+  >(null)
+
+  const exportReport = useCallback(
+    async (format: 'csv' | 'json') => {
+      if (!databaseId) return
+      setBusyAction(format === 'csv' ? 'export-csv' : 'export-json')
+      setError('')
+      try {
+        await databasesApi.exportReport(databaseId, format, 100)
+      } catch (requestError) {
+        setError(getErrorMessage(requestError))
+      } finally {
+        setBusyAction(null)
+      }
+    },
+    [databaseId],
+  )
 
   const refreshHistory = useCallback(async () => {
     const updatedHistory = await databasesApi.history(databaseId, 50)
@@ -213,7 +231,30 @@ export function DatabaseDetailPage() {
             </Panel>
           </div>
 
-          <Panel title="Historial de monitoreo" description="Las muestras son registros históricos y no se sobrescriben.">
+          <Panel
+            title="Historial de monitoreo"
+            description="Las muestras son registros históricos y no se sobrescriben."
+            action={
+              history.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button
+                    variant="secondary"
+                    busy={busyAction === 'export-csv'}
+                    onClick={() => void exportReport('csv')}
+                  >
+                    Exportar CSV
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    busy={busyAction === 'export-json'}
+                    onClick={() => void exportReport('json')}
+                  >
+                    Exportar JSON
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          >
             {history.length ? (
               <div className="table-wrap">
                 <table>

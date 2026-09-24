@@ -79,4 +79,54 @@ export const httpClient = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string) => request<void>(path, { method: 'DELETE' }),
+  download: async (path: string, fallbackFilename: string) => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    const token = readAccessToken()
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers,
+        signal: controller.signal,
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+      })
+
+      if (!response.ok) {
+        if (response.status === 401 && token) {
+          clearAccessToken()
+          window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+        }
+        throw new ApiError('No fue posible descargar el archivo.', response.status)
+      }
+
+      const blob = await response.blob()
+      const disposition = response.headers.get('Content-Disposition')
+      let filename = fallbackFilename
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename="?([^";]+)"?/)
+        if (match?.[1]) filename = match[1]
+      }
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      if (error instanceof ApiError) throw error
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError('La descarga tardó demasiado en responder.', 408)
+      }
+      throw new ApiError('No fue posible descargar el reporte.', 0)
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  },
 }
+
