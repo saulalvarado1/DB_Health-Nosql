@@ -4,6 +4,7 @@ import type {
   AlertStatus,
   AuthCredentials,
   CreateMonitoredDatabase,
+  HistoryTimeRange,
   MonitoredDatabase,
   MonitoringHistory,
   MonitoringRun,
@@ -31,10 +32,12 @@ export const databasesApi = {
   update: (databaseId: string, payload: UpdateMonitoredDatabase) =>
     httpClient.patch<MonitoredDatabase>(`/databases/${segment(databaseId)}`, payload),
   remove: (databaseId: string) => httpClient.delete(`/databases/${segment(databaseId)}`),
-  history: (databaseId: string, limit = 50) =>
-    httpClient.get<MonitoringHistory[]>(
-      `/databases/${segment(databaseId)}/history?limit=${Math.min(Math.max(limit, 1), 500)}`,
-    ),
+  history: (databaseId: string, limit = 100, range?: HistoryTimeRange) => {
+    const rangeParam = range && range !== 'all' ? `&range=${encodeURIComponent(range)}` : ''
+    return httpClient.get<MonitoringHistory[]>(
+      `/databases/${segment(databaseId)}/history?limit=${Math.min(Math.max(limit, 1), 1000)}${rangeParam}`,
+    )
+  },
   collect: (databaseId: string) =>
     httpClient.post<MonitoringRun>(`/databases/${segment(databaseId)}/collect`),
   thresholds: (databaseId: string) =>
@@ -48,11 +51,18 @@ export const databasesApi = {
       `/databases/${segment(databaseId)}/thresholds/${segment(metricCode)}`,
       payload,
     ),
-  exportReport: (databaseId: string, format: 'csv' | 'json' = 'csv', limit = 100) =>
-    httpClient.download(
-      `/databases/${segment(databaseId)}/export?format=${format}&limit=${limit}`,
+  exportReport: (
+    databaseId: string,
+    format: 'csv' | 'json' = 'csv',
+    limit = 100,
+    range?: HistoryTimeRange,
+  ) => {
+    const rangeParam = range && range !== 'all' ? `&range=${encodeURIComponent(range)}` : ''
+    return httpClient.download(
+      `/databases/${segment(databaseId)}/export?format=${format}&limit=${limit}${rangeParam}`,
       `reporte_salud_${databaseId}.${format}`,
-    ),
+    )
+  },
 }
 
 export const alertsApi = {

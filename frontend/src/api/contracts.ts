@@ -4,6 +4,7 @@ export type MetricDiagnosticStatus = 'healthy' | 'warning' | 'critical' | 'infor
 export type MetricDiagnosticBasis = 'threshold' | 'heuristic' | 'informational'
 export type AlertSeverity = 'warning' | 'critical'
 export type AlertStatus = 'open' | 'acknowledged' | 'resolved'
+export type HistoryTimeRange = '1h' | '6h' | '24h' | '7d' | 'all'
 
 export interface User {
   id: string

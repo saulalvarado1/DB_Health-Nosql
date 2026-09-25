@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -26,6 +26,13 @@ from app.services.monitoring import MonitoringService
 from app.services.reports import ReportExportService
 
 router = APIRouter(prefix="/databases")
+
+RANGE_DELTAS: dict[str, timedelta] = {
+    "1h": timedelta(hours=1),
+    "6h": timedelta(hours=6),
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+}
 
 
 @router.post("", response_model=MonitoredDatabaseResponse, status_code=status.HTTP_201_CREATED)
@@ -101,14 +108,17 @@ def delete_monitored_database(
 @router.get("/{database_id}/history", response_model=list[MonitoringHistoryResponse])
 def list_monitoring_history(
     database_id: UUID,
-    limit: int = Query(default=50, ge=1, le=500),
+    limit: int = Query(default=100, ge=1, le=1000),
+    range: str | None = Query(default=None, pattern="^(1h|6h|24h|7d)$"),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[MonitoringHistoryResponse]:
+    since = datetime.now(UTC) - RANGE_DELTAS[range] if range in RANGE_DELTAS else None
     entries = MonitoringHistoryService(session).list_for_owner(
         database_id=database_id,
         owner_id=current_user.id,
         limit=limit,
+        since=since,
     )
     return [monitoring_history_response(entry) for entry in entries]
 
@@ -134,7 +144,8 @@ def collect_metrics_now(
 def export_health_report(
     database_id: UUID,
     format: str = Query(default="csv", pattern="^(csv|json)$"),
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=100, ge=1, le=1000),
+    range: str | None = Query(default=None, pattern="^(1h|6h|24h|7d)$"),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> Response:
@@ -142,10 +153,12 @@ def export_health_report(
     if database is None:
         raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
 
+    since = datetime.now(UTC) - RANGE_DELTAS[range] if range in RANGE_DELTAS else None
     entries = MonitoringHistoryService(session).list_for_owner(
         database_id=database_id,
         owner_id=current_user.id,
         limit=limit,
+        since=since,
     )
     report_service = ReportExportService(database, entries)
     slug = re.sub(r"[^a-zA-Z0-9_\-]+", "_", database.name).strip("_").lower() or "db"

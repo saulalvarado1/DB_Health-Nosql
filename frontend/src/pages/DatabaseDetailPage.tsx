@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
-import type { MonitoredDatabase, MonitoringHistory } from '../api/contracts'
+import type { HistoryTimeRange, MonitoredDatabase, MonitoringHistory } from '../api/contracts'
 import { databasesApi } from '../api/resources'
 import { HealthChart } from '../components/HealthChart'
 import { MetricCatalog } from '../components/MetricCatalog'
@@ -15,10 +15,19 @@ const featuredMetricCodes: Record<MonitoredDatabase['engine'], string[]> = {
   redis: ['availability', 'connected_clients', 'memory_usage_percent'],
 }
 
+const TIME_RANGES: { id: HistoryTimeRange; label: string }[] = [
+  { id: '1h', label: '1 hora' },
+  { id: '6h', label: '6 horas' },
+  { id: '24h', label: '24 horas' },
+  { id: '7d', label: '7 días' },
+  { id: 'all', label: 'Todo' },
+]
+
 export function DatabaseDetailPage() {
   const { databaseId = '' } = useParams()
   const [database, setDatabase] = useState<MonitoredDatabase | null>(null)
   const [history, setHistory] = useState<MonitoringHistory[]>([])
+  const [selectedRange, setSelectedRange] = useState<HistoryTimeRange>('all')
   const [name, setName] = useState('')
   const [intervalSeconds, setIntervalSeconds] = useState(30)
   const [error, setError] = useState('')
@@ -36,21 +45,39 @@ export function DatabaseDetailPage() {
       setBusyAction(format === 'csv' ? 'export-csv' : 'export-json')
       setError('')
       try {
-        await databasesApi.exportReport(databaseId, format, 100)
+        await databasesApi.exportReport(databaseId, format, 100, selectedRange)
       } catch (requestError) {
         setError(getErrorMessage(requestError))
       } finally {
         setBusyAction(null)
       }
     },
-    [databaseId],
+    [databaseId, selectedRange],
   )
 
-  const refreshHistory = useCallback(async () => {
-    const updatedHistory = await databasesApi.history(databaseId, 50)
-    setHistory(updatedHistory)
-    setLastUpdatedAt(new Date().toISOString())
-  }, [databaseId])
+  const refreshHistory = useCallback(
+    async (rangeToUse = selectedRange) => {
+      const updatedHistory = await databasesApi.history(databaseId, 100, rangeToUse)
+      setHistory(updatedHistory)
+      setLastUpdatedAt(new Date().toISOString())
+    },
+    [databaseId, selectedRange],
+  )
+
+  const handleRangeChange = useCallback(
+    async (newRange: HistoryTimeRange) => {
+      setSelectedRange(newRange)
+      setError('')
+      try {
+        const updatedHistory = await databasesApi.history(databaseId, 100, newRange)
+        setHistory(updatedHistory)
+        setLastUpdatedAt(new Date().toISOString())
+      } catch (requestError) {
+        setError(getErrorMessage(requestError))
+      }
+    },
+    [databaseId],
+  )
 
   const autoRefreshHistory = useCallback(async () => {
     await refreshHistory()
@@ -255,6 +282,24 @@ export function DatabaseDetailPage() {
               ) : undefined
             }
           >
+            <div
+              className="filter-tabs"
+              role="group"
+              aria-label="Filtrar por rango de tiempo"
+              style={{ marginTop: 0, marginBottom: '1rem' }}
+            >
+              {TIME_RANGES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={selectedRange === item.id ? 'filter-tabs__active' : ''}
+                  onClick={() => void handleRangeChange(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
             {history.length ? (
               <div className="table-wrap">
                 <table>

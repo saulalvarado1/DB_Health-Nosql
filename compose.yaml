@@ -73,7 +73,10 @@ services:
     init: true
     networks:
       - backend
-      - edge
+      - edge:
+          aliases:
+            - api
+            - api.railway.internal
 
   worker:
     <<: *backend-service

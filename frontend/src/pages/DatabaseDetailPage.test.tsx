@@ -175,4 +175,26 @@ describe('DatabaseDetailPage', () => {
     )
     expect(screen.getByLabelText('Resumen de diagnósticos')).toBeInTheDocument()
   })
+
+  it('permite filtrar el historial por rango de tiempo y actualizar la consulta', async () => {
+    vi.spyOn(databasesApi, 'get').mockResolvedValue(database)
+    const historySpy = vi.spyOn(databasesApi, 'history').mockResolvedValue(history)
+
+    render(
+      <MemoryRouter initialEntries={['/databases/database-1']}>
+        <Routes>
+          <Route path="/databases/:databaseId" element={<DatabaseDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await screen.findByRole('heading', { name: 'Métricas actuales' })
+
+    const btn1h = screen.getByRole('button', { name: '1 hora' })
+    expect(btn1h).toBeInTheDocument()
+
+    fireEvent.click(btn1h)
+    expect(historySpy).toHaveBeenCalledWith('database-1', 100, '1h')
+    expect(btn1h).toHaveClass('filter-tabs__active')
+  })
 })

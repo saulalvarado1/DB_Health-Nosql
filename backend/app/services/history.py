@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -28,7 +29,12 @@ class MonitoringHistoryService:
         self._thresholds = ThresholdProfileRepository(session)
 
     def list_for_owner(
-        self, *, database_id: UUID, owner_id: UUID, limit: int
+        self,
+        *,
+        database_id: UUID,
+        owner_id: UUID,
+        limit: int,
+        since: datetime | None = None,
     ) -> list[MonitoringHistoryEntry]:
         database = self._databases.get_for_owner(database_id, owner_id)
         if database is None:
@@ -37,6 +43,7 @@ class MonitoringHistoryService:
             database_id=database_id,
             owner_id=owner_id,
             limit=limit,
+            since=since,
         )
         configured_rules = self._thresholds.rules_for_database(database_id)
         rules_by_code = {

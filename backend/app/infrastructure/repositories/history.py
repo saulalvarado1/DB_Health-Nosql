@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -17,7 +18,12 @@ class MonitoringHistoryRepository:
         self._session = session
 
     def list_for_database_and_owner(
-        self, *, database_id: UUID, owner_id: UUID, limit: int
+        self,
+        *,
+        database_id: UUID,
+        owner_id: UUID,
+        limit: int,
+        since: datetime | None = None,
     ) -> list[MetricSample]:
         statement = (
             select(MetricSample)
@@ -30,7 +36,9 @@ class MonitoringHistoryRepository:
                 MetricSample.monitored_database_id == database_id,
                 MonitoredDatabase.owner_id == owner_id,
             )
-            .order_by(MetricSample.collected_at.desc())
-            .limit(limit)
         )
+        if since is not None:
+            statement = statement.where(MetricSample.collected_at >= since)
+
+        statement = statement.order_by(MetricSample.collected_at.desc()).limit(limit)
         return list(self._session.scalars(statement))

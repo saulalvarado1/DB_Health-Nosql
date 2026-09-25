@@ -1,0 +1,2 @@
+user default on >AdminPass123! ~* &* +@all
+user monitor on >MonitorPass123! -@all +ping +info

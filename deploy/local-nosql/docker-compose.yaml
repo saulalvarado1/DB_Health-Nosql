@@ -1,0 +1,57 @@
+services:
+  redis:
+    image: redis:8.10.1-alpine
+    container_name: local-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --aclfile
+      - /usr/local/etc/redis/users.acl
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - ./users.acl:/usr/local/etc/redis/users.acl:ro
+    ports:
+      - "6379:6379"
+
+  mongodb:
+    image: mongo:8.0.32-noble
+    container_name: local-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: RootPassword123!
+    volumes:
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - local_mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: local-redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    container_name: local-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: RootPassword123!
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      - mongodb
+
+volumes:
+  local_mongo_data:

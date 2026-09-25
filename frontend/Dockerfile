@@ -20,6 +20,8 @@ FROM nginxinc/nginx-unprivileged:1.29.1-alpine AS runtime
 LABEL org.opencontainers.image.title="DB Health Monitor Frontend" \
       org.opencontainers.image.description="Static React client and same-origin API proxy"
 
+ENV ENABLE_ALPINE_PRIVATE_NETWORKING=true
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /build/dist /usr/share/nginx/html
 
