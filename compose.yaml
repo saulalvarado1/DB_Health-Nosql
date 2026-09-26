@@ -17,6 +17,8 @@ x-backend-service: &backend-service
     context: ./backend
     dockerfile: Dockerfile
   environment: *backend-environment
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -72,11 +74,11 @@ services:
     restart: unless-stopped
     init: true
     networks:
-      - backend
-      - edge:
-          aliases:
-            - api
-            - api.railway.internal
+      backend:
+      edge:
+        aliases:
+          - api
+          - api.railway.internal
 
   worker:
     <<: *backend-service

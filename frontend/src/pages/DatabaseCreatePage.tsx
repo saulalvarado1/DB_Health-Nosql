@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import type { DatabaseEngine } from '../api/contracts'
@@ -14,6 +14,17 @@ export function DatabaseCreatePage() {
   const [intervalSeconds, setIntervalSeconds] = useState(30)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const isLocalHostAddress = useMemo(() => {
+    const lower = connectionUri.toLowerCase()
+    return (
+      lower.includes('localhost') ||
+      lower.includes('127.0.0.1') ||
+      lower.includes('192.168.') ||
+      lower.includes('10.') ||
+      lower.includes('172.16.')
+    )
+  }, [connectionUri])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -76,6 +87,18 @@ export function DatabaseCreatePage() {
             <small>Se transmite a la API y se cifra antes de persistirse. No se puede recuperar posteriormente.</small>
           </label>
 
+          {isLocalHostAddress && (
+            <div className="security-box security-box--warning form-grid__full">
+              <strong>⚠️ Detección de dirección local o privada</strong>
+              <p>
+                Has ingresado una dirección de red local o privada. Si estás utilizando esta plataforma desde la nube (Railway), los servidores externos no pueden acceder a tu red privada sin un puente de red.
+              </p>
+              <p>
+                Para monitorear tu base de datos local desde la nube, crea un túnel TCP seguro con herramientas como ngrok (ejemplo: <code>ngrok tcp {engine === 'redis' ? '6379' : '27017'}</code>) e ingresa la URL pública proporcionada, o ejecuta DB Health Monitor en tu entorno local.
+              </p>
+            </div>
+          )}
+
           <label className="field">
             <span>Intervalo de monitoreo</span>
             <div className="input-with-suffix">
@@ -93,10 +116,18 @@ export function DatabaseCreatePage() {
           </label>
 
           <div className="security-box form-grid__full">
-            <strong>Antes de continuar</strong>
-            <p>
-              La cuenta remota debe permitir únicamente las operaciones de lectura necesarias para métricas. El monitor no necesita escribir datos en Redis ni MongoDB.
-            </p>
+            <strong>Guía de conectividad según el entorno</strong>
+            <ul>
+              <li>
+                <strong>Bases de datos en la nube (Recomendado):</strong> Ingresa la URL pública o cadena de conexión provista por tu servicio (ej. MongoDB Atlas, Redis Cloud, AWS, Upstash).
+              </li>
+              <li>
+                <strong>Bases de datos locales (PC / Laptop):</strong> Para instancias en tu máquina evaluadas desde la nube, exponlas mediante un túnel TCP seguro (ej. <code>ngrok tcp {engine === 'redis' ? '6379' : '27017'}</code>) o ejecuta DB Health Monitor de forma local con Docker Compose.
+              </li>
+              <li>
+                <strong>Permisos mínimos:</strong> La cuenta debe permitir únicamente operaciones de lectura (<code>PING</code>/<code>INFO</code> en Redis; <code>ping</code>/<code>serverStatus</code> en MongoDB). El monitor nunca modifica tus datos.
+              </li>
+            </ul>
           </div>
 
           <div className="form-actions form-grid__full">
