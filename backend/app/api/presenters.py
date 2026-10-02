@@ -20,6 +20,12 @@ def monitored_database_response(database: MonitoredDatabase) -> MonitoredDatabas
         interval_seconds=database.schedule.interval_seconds,
         is_enabled=database.is_enabled,
         created_at=database.created_at,
+        telegram_notifications_enabled=getattr(database, "telegram_notifications_enabled", False),
+        telegram_chat_id=getattr(database, "telegram_chat_id", None),
+        has_telegram_bot_token=bool(getattr(database, "telegram_bot_token_encrypted", None)),
+        notify_on_warning=getattr(database, "notify_on_warning", False),
+        notify_on_critical=getattr(database, "notify_on_critical", True),
+        notify_on_recovery=getattr(database, "notify_on_recovery", True),
     )
 
 

@@ -11,18 +11,21 @@ from app.api.presenters import monitored_database_response, monitoring_history_r
 from app.api.schemas.monitored_databases import (
     CreateMonitoredDatabaseRequest,
     MonitoredDatabaseResponse,
+    TelegramTestNotificationRequest,
+    TelegramTestNotificationResponse,
     UpdateMonitoredDatabaseRequest,
 )
 from app.api.schemas.monitoring import MonitoringHistoryResponse, MonitoringRunResponse
 from app.core.secrets import CredentialsCipher
 from app.domain.commands import RegisterMonitoredDatabaseCommand, UpdateMonitoredDatabaseCommand
-from app.domain.errors import ResourceNotFoundError
+from app.domain.errors import ConfigurationError, ResourceNotFoundError
 from app.infrastructure.connectors import build_connector_registry
 from app.infrastructure.persistence.models import User
 from app.infrastructure.repositories.monitored_databases import MonitoredDatabaseRepository
 from app.services.database_registry import DatabaseRegistryService
 from app.services.history import MonitoringHistoryService
 from app.services.monitoring import MonitoringService
+from app.services.notifications import TelegramNotificationService
 from app.services.reports import ReportExportService
 
 router = APIRouter(prefix="/databases")
@@ -88,9 +91,56 @@ def update_monitored_database(
             name=request.name,
             interval_seconds=request.interval_seconds,
             is_enabled=request.is_enabled,
+            telegram_notifications_enabled=request.telegram_notifications_enabled,
+            telegram_chat_id=request.telegram_chat_id,
+            telegram_bot_token=(
+                request.telegram_bot_token.get_secret_value()
+                if request.telegram_bot_token is not None
+                else None
+            ),
+            clear_telegram_bot_token=request.clear_telegram_bot_token,
+            notify_on_warning=request.notify_on_warning,
+            notify_on_critical=request.notify_on_critical,
+            notify_on_recovery=request.notify_on_recovery,
         ),
     )
     return monitored_database_response(database)
+
+
+@router.post("/{database_id}/telegram-test", response_model=TelegramTestNotificationResponse)
+def test_telegram_notification(
+    database_id: UUID,
+    request: TelegramTestNotificationRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> TelegramTestNotificationResponse:
+    database = MonitoredDatabaseRepository(session).get_for_owner(database_id, current_user.id)
+    if database is None:
+        raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
+
+    custom_chat_id = request.chat_id.strip() if request and request.chat_id else None
+    custom_bot_token = (
+        request.bot_token.get_secret_value().strip()
+        if request and request.bot_token
+        else None
+    )
+
+    cipher = CredentialsCipher()
+    service = TelegramNotificationService(cipher=cipher)
+    result = service.send_test_notification(
+        database=database,
+        custom_chat_id=custom_chat_id,
+        custom_bot_token=custom_bot_token,
+    )
+    if not result.delivered:
+        raise ConfigurationError(
+            result.error_message or "No fue posible entregar el mensaje de prueba a Telegram."
+        )
+
+    return TelegramTestNotificationResponse(
+        success=True,
+        message="Mensaje de prueba enviado exitosamente a Telegram.",
+    )
 
 
 @router.delete("/{database_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     monitoring_worker_poll_seconds: int = Field(default=5, ge=1, le=300)
     monitoring_lease_seconds: int = Field(default=90, ge=10, le=3_600)
     monitoring_worker_batch_size: int = Field(default=25, ge=1, le=500)
+    telegram_bot_token: SecretStr | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 

@@ -30,6 +30,12 @@ export interface MonitoredDatabase {
   interval_seconds: number
   is_enabled: boolean
   created_at: string
+  telegram_notifications_enabled?: boolean
+  telegram_chat_id?: string | null
+  has_telegram_bot_token?: boolean
+  notify_on_warning?: boolean
+  notify_on_critical?: boolean
+  notify_on_recovery?: boolean
 }
 
 export interface CreateMonitoredDatabase {
@@ -43,6 +49,23 @@ export interface UpdateMonitoredDatabase {
   name?: string
   interval_seconds?: number
   is_enabled?: boolean
+  telegram_notifications_enabled?: boolean
+  telegram_chat_id?: string | null
+  telegram_bot_token?: string | null
+  clear_telegram_bot_token?: boolean
+  notify_on_warning?: boolean
+  notify_on_critical?: boolean
+  notify_on_recovery?: boolean
+}
+
+export interface TelegramTestNotificationRequest {
+  chat_id?: string
+  bot_token?: string
+}
+
+export interface TelegramTestNotificationResponse {
+  success: boolean
+  message: string
 }
 
 export interface MetricValue {

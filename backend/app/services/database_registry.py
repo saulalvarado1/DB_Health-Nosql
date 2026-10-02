@@ -81,6 +81,26 @@ class DatabaseRegistryService:
             monitored_database.is_enabled = command.is_enabled
             monitored_database.schedule.is_enabled = command.is_enabled
             schedule_immediately = command.is_enabled
+        if command.telegram_notifications_enabled is not None:
+            monitored_database.telegram_notifications_enabled = command.telegram_notifications_enabled
+        if command.telegram_chat_id is not None:
+            monitored_database.telegram_chat_id = (
+                command.telegram_chat_id.strip() if command.telegram_chat_id.strip() else None
+            )
+        if command.clear_telegram_bot_token:
+            monitored_database.telegram_bot_token_encrypted = None
+        elif command.telegram_bot_token is not None:
+            token = command.telegram_bot_token.strip()
+            if token:
+                monitored_database.telegram_bot_token_encrypted = self._cipher.encrypt(token)
+            else:
+                monitored_database.telegram_bot_token_encrypted = None
+        if command.notify_on_warning is not None:
+            monitored_database.notify_on_warning = command.notify_on_warning
+        if command.notify_on_critical is not None:
+            monitored_database.notify_on_critical = command.notify_on_critical
+        if command.notify_on_recovery is not None:
+            monitored_database.notify_on_recovery = command.notify_on_recovery
         if schedule_immediately:
             monitored_database.schedule.next_run_at = datetime.now(UTC)
 

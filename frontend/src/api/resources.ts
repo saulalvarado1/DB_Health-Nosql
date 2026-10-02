@@ -8,6 +8,8 @@ import type {
   MonitoredDatabase,
   MonitoringHistory,
   MonitoringRun,
+  TelegramTestNotificationRequest,
+  TelegramTestNotificationResponse,
   ThresholdProfile,
   UpdateMonitoredDatabase,
   User,
@@ -63,6 +65,11 @@ export const databasesApi = {
       `reporte_salud_${databaseId}.${format}`,
     )
   },
+  testTelegram: (databaseId: string, payload?: TelegramTestNotificationRequest) =>
+    httpClient.post<TelegramTestNotificationResponse>(
+      `/databases/${segment(databaseId)}/telegram-test`,
+      payload ?? {},
+    ),
 }
 
 export const alertsApi = {

@@ -26,6 +26,7 @@ from app.services.health_score import (
     assess_metrics,
     severity_for_rule,
 )
+from app.services.notifications import TelegramNotificationService
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,13 +47,16 @@ class MonitoringService:
         session: Session,
         cipher: CredentialsCipher,
         connectors: ConnectorRegistry,
+        notifier: TelegramNotificationService | None = None,
     ) -> None:
         self._session = session
         self._cipher = cipher
         self._connectors = connectors
         self._metric_catalog = MetricCatalogRepository(session)
         self._threshold_profiles = ThresholdProfileRepository(session)
-        self._alerts = AlertLifecycleService(AlertRepository(session))
+        self._alerts_repo = AlertRepository(session)
+        self._alerts = AlertLifecycleService(self._alerts_repo)
+        self._notifier = notifier or TelegramNotificationService(cipher=cipher)
 
     def collect_once(self, monitored_database: MonitoredDatabase) -> MonitoringRunResult:
         collected_at = datetime.now(UTC)
@@ -88,11 +92,23 @@ class MonitoringService:
         )
         self._session.add(sample)
         self._session.flush()
+        active_alerts_before = {
+            alert.deduplication_key: alert.severity
+            for alert in self._alerts_repo.list_active_for_database(monitored_database.id)
+        }
+        signals = self._threshold_alert_signals(collected_metrics, configured_rules)
         self._alerts.synchronize(
             monitored_database_id=monitored_database.id,
             sample_id=sample.id,
-            signals=self._threshold_alert_signals(collected_metrics, configured_rules),
+            signals=signals,
             evaluated_at=collected_at,
+        )
+        self._dispatch_notifications(
+            monitored_database=monitored_database,
+            active_alerts_before=active_alerts_before,
+            current_signals=signals,
+            health_score=assessment.score,
+            health_status=assessment.status.value,
         )
         self._session.commit()
         self._session.refresh(sample)
@@ -122,18 +138,30 @@ class MonitoringService:
         )
         self._session.add(sample)
         self._session.flush()
+        active_alerts_before = {
+            alert.deduplication_key: alert.severity
+            for alert in self._alerts_repo.list_active_for_database(monitored_database.id)
+        }
+        signals = (
+            AlertSignal(
+                deduplication_key="connection-unavailable",
+                severity=HealthStatus.CRITICAL,
+                message="La instancia monitoreada no responde.",
+                threshold_rule_id=None,
+            ),
+        )
         self._alerts.synchronize(
             monitored_database_id=monitored_database.id,
             sample_id=sample.id,
-            signals=(
-                AlertSignal(
-                    deduplication_key="connection-unavailable",
-                    severity=HealthStatus.CRITICAL,
-                    message="La instancia monitoreada no responde.",
-                    threshold_rule_id=None,
-                ),
-            ),
+            signals=signals,
             evaluated_at=collected_at,
+        )
+        self._dispatch_notifications(
+            monitored_database=monitored_database,
+            active_alerts_before=active_alerts_before,
+            current_signals=signals,
+            health_score=assessment.score,
+            health_status=assessment.status.value,
         )
         self._session.commit()
         self._session.refresh(sample)
@@ -145,6 +173,55 @@ class MonitoringService:
             health_status=assessment.status,
             metric_count=0,
         )
+
+    def _dispatch_notifications(
+        self,
+        *,
+        monitored_database: MonitoredDatabase,
+        active_alerts_before: dict[str, str],
+        current_signals: tuple[AlertSignal, ...] | list[AlertSignal],
+        health_score: int,
+        health_status: str,
+    ) -> None:
+        if (
+            not monitored_database.telegram_notifications_enabled
+            or not monitored_database.telegram_chat_id
+        ):
+            return
+
+        current_signals_by_key = {signal.deduplication_key: signal for signal in current_signals}
+
+        for key, signal in current_signals_by_key.items():
+            prev_severity = active_alerts_before.get(key)
+            if prev_severity is None:
+                self._notifier.notify_alert_event(
+                    monitored_database,
+                    event_type=signal.severity.value,
+                    message=signal.message,
+                    health_score=health_score,
+                    health_status=health_status,
+                )
+            elif prev_severity == "warning" and signal.severity.value == "critical":
+                self._notifier.notify_alert_event(
+                    monitored_database,
+                    event_type="critical",
+                    message=f"Escalamiento a crítico: {signal.message}",
+                    health_score=health_score,
+                    health_status=health_status,
+                )
+
+        if (
+            active_alerts_before
+            and not current_signals
+            and health_status == HealthStatus.HEALTHY.value
+        ):
+            self._notifier.notify_alert_event(
+                monitored_database,
+                event_type="recovery",
+                message="Todas las alertas activas han sido resueltas. La base de datos opera con normalidad.",
+                health_score=health_score,
+                health_status=health_status,
+            )
 
     @staticmethod
     def _health_rule(rule: ThresholdRule, definition: MetricDefinition) -> HealthRule:

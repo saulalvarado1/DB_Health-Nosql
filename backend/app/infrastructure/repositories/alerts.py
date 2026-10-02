@@ -61,6 +61,13 @@ class AlertRepository:
                 alert.status = "resolved"
                 alert.resolved_at = resolved_at
 
+    def list_active_for_database(self, monitored_database_id: UUID) -> list[Alert]:
+        statement = select(Alert).where(
+            Alert.monitored_database_id == monitored_database_id,
+            Alert.status.in_(ACTIVE_ALERT_STATUSES),
+        )
+        return list(self._session.scalars(statement))
+
     def list_for_owner(self, owner_id: UUID, status_filter: str | None) -> list[Alert]:
         statement = (
             select(Alert)

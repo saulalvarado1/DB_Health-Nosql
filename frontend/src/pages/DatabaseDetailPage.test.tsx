@@ -197,4 +197,43 @@ describe('DatabaseDetailPage', () => {
     expect(historySpy).toHaveBeenCalledWith('database-1', 100, '1h')
     expect(btn1h).toHaveClass('filter-tabs__active')
   })
+
+  it('permite configurar y probar notificaciones de Telegram', async () => {
+    vi.spyOn(databasesApi, 'get').mockResolvedValue({
+      ...database,
+      telegram_notifications_enabled: true,
+      telegram_chat_id: '998877',
+      has_telegram_bot_token: true,
+    })
+    vi.spyOn(databasesApi, 'history').mockResolvedValue(history)
+    const testSpy = vi.spyOn(databasesApi, 'testTelegram').mockResolvedValue({
+      success: true,
+      message: 'Mensaje de prueba enviado exitosamente a Telegram.',
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/databases/database-1']}>
+        <Routes>
+          <Route path="/databases/:databaseId" element={<DatabaseDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Alertas y Notificaciones a Telegram' })).toBeInTheDocument()
+
+    const chatIdInput = screen.getByPlaceholderText(/Ej: 123456789/i)
+    expect(chatIdInput).toHaveValue('998877')
+
+    const testBtn = screen.getByRole('button', { name: /Enviar mensaje de prueba a Telegram/i })
+    expect(testBtn).toBeInTheDocument()
+
+    fireEvent.click(testBtn)
+    expect(testSpy).toHaveBeenCalledWith('database-1', {
+      chat_id: '998877',
+      bot_token: undefined,
+    })
+
+    expect(await screen.findByText(/Mensaje de prueba enviado exitosamente a Telegram/i)).toBeInTheDocument()
+  })
 })
+

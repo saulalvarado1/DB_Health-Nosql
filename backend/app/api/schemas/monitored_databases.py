@@ -37,12 +37,25 @@ class MonitoredDatabaseResponse(BaseModel):
     interval_seconds: int
     is_enabled: bool
     created_at: datetime
+    telegram_notifications_enabled: bool = False
+    telegram_chat_id: str | None = None
+    has_telegram_bot_token: bool = False
+    notify_on_warning: bool = False
+    notify_on_critical: bool = True
+    notify_on_recovery: bool = True
 
 
 class UpdateMonitoredDatabaseRequest(BaseModel):
     name: str | None = Field(default=None, max_length=120)
     interval_seconds: int | None = Field(default=None, ge=10, le=86_400)
     is_enabled: bool | None = None
+    telegram_notifications_enabled: bool | None = None
+    telegram_chat_id: str | None = None
+    telegram_bot_token: SecretStr | None = None
+    clear_telegram_bot_token: bool | None = None
+    notify_on_warning: bool | None = None
+    notify_on_critical: bool | None = None
+    notify_on_recovery: bool | None = None
 
     @field_validator("name")
     @classmethod
@@ -56,6 +69,28 @@ class UpdateMonitoredDatabaseRequest(BaseModel):
 
     @model_validator(mode="after")
     def update_must_contain_a_change(self) -> "UpdateMonitoredDatabaseRequest":
-        if all(value is None for value in (self.name, self.interval_seconds, self.is_enabled)):
+        fields = (
+            self.name,
+            self.interval_seconds,
+            self.is_enabled,
+            self.telegram_notifications_enabled,
+            self.telegram_chat_id,
+            self.telegram_bot_token,
+            self.clear_telegram_bot_token,
+            self.notify_on_warning,
+            self.notify_on_critical,
+            self.notify_on_recovery,
+        )
+        if all(value is None for value in fields):
             raise ValueError("Debes enviar al menos un campo para actualizar.")
         return self
+
+
+class TelegramTestNotificationRequest(BaseModel):
+    chat_id: str | None = None
+    bot_token: SecretStr | None = None
+
+
+class TelegramTestNotificationResponse(BaseModel):
+    success: bool
+    message: str

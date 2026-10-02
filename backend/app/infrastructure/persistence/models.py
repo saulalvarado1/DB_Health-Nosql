@@ -78,6 +78,20 @@ class MonitoredDatabase(TimestampedModel, Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     connection_uri_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    telegram_notifications_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    telegram_bot_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notify_on_warning: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    notify_on_critical: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False
+    )
+    notify_on_recovery: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False
+    )
 
     owner: Mapped[User] = relationship(back_populates="monitored_databases")
     engine: Mapped[DatabaseEngine] = relationship(back_populates="monitored_databases")

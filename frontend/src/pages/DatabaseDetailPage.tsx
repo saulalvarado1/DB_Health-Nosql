@@ -36,8 +36,18 @@ export function DatabaseDetailPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busyAction, setBusyAction] = useState<
-    'collect' | 'save' | 'toggle' | 'export-csv' | 'export-json' | null
+    'collect' | 'save' | 'toggle' | 'export-csv' | 'export-json' | 'save-telegram' | 'test-telegram' | null
   >(null)
+
+  const [telegramEnabled, setTelegramEnabled] = useState(false)
+  const [telegramChatId, setTelegramChatId] = useState('')
+  const [telegramBotToken, setTelegramBotToken] = useState('')
+  const [notifyWarning, setNotifyWarning] = useState(false)
+  const [notifyCritical, setNotifyCritical] = useState(true)
+  const [notifyRecovery, setNotifyRecovery] = useState(true)
+  const [telegramSuccess, setTelegramSuccess] = useState('')
+  const [telegramError, setTelegramError] = useState('')
+  const [showTelegramGuide, setShowTelegramGuide] = useState(false)
 
   const exportReport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -97,6 +107,11 @@ export function DatabaseDetailPage() {
         setDatabase(databaseResponse)
         setName(databaseResponse.name)
         setIntervalSeconds(databaseResponse.interval_seconds)
+        setTelegramEnabled(databaseResponse.telegram_notifications_enabled ?? false)
+        setTelegramChatId(databaseResponse.telegram_chat_id ?? '')
+        setNotifyWarning(databaseResponse.notify_on_warning ?? false)
+        setNotifyCritical(databaseResponse.notify_on_critical ?? true)
+        setNotifyRecovery(databaseResponse.notify_on_recovery ?? true)
         setHistory(historyResponse)
         setLastUpdatedAt(new Date().toISOString())
       })
@@ -189,6 +204,47 @@ export function DatabaseDetailPage() {
     }
   }
 
+  async function saveTelegramSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusyAction('save-telegram')
+    setTelegramError('')
+    setTelegramSuccess('')
+    try {
+      const updated = await databasesApi.update(databaseId, {
+        telegram_notifications_enabled: telegramEnabled,
+        telegram_chat_id: telegramChatId.trim() || null,
+        telegram_bot_token: telegramBotToken.trim() || undefined,
+        notify_on_warning: notifyWarning,
+        notify_on_critical: notifyCritical,
+        notify_on_recovery: notifyRecovery,
+      })
+      setDatabase(updated)
+      setTelegramBotToken('')
+      setTelegramSuccess('Configuración de alertas de Telegram guardada correctamente.')
+    } catch (requestError) {
+      setTelegramError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function testTelegram() {
+    setBusyAction('test-telegram')
+    setTelegramError('')
+    setTelegramSuccess('')
+    try {
+      const res = await databasesApi.testTelegram(databaseId, {
+        chat_id: telegramChatId.trim() || undefined,
+        bot_token: telegramBotToken.trim() || undefined,
+      })
+      setTelegramSuccess(`✅ ${res.message} ¡Revisa tu teléfono!`)
+    } catch (requestError) {
+      setTelegramError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   if (loading) return <div className="page"><LoadingState /></div>
 
   return (
@@ -257,6 +313,181 @@ export function DatabaseDetailPage() {
               </form>
             </Panel>
           </div>
+
+          <Panel
+            title="Alertas y Notificaciones a Telegram"
+            description="Recibe avisos inmediatos en tu celular ante caídas de servicio o degradación de salud."
+            action={
+              <button
+                type="button"
+                className="text-action"
+                onClick={() => setShowTelegramGuide((prev) => !prev)}
+              >
+                {showTelegramGuide ? 'Ocultar guía' : '¿Cómo configurar Telegram?'}
+              </button>
+            }
+          >
+            {telegramSuccess && <SuccessNotice message={telegramSuccess} />}
+            {telegramError && <ErrorNotice message={telegramError} />}
+
+            {showTelegramGuide && (
+              <div className="security-box" style={{ marginBottom: '1.25rem' }}>
+                <strong>📱 Cómo vincular Telegram en 3 simples pasos:</strong>
+                <ul>
+                  <li>
+                    <strong>1. Obtén tu Chat ID:</strong> Abre Telegram, busca el bot <code>@userinfobot</code> y presiona <em>Start</em>. Te responderá con tu número de <code>Id</code> personal (ej: <code>123456789</code>).
+                  </li>
+                  <li>
+                    <strong>2. Inicia el bot:</strong> Abre una conversación con tu bot (o con el bot del monitor) y presiona <em>/start</em> para habilitar la recepción de mensajes.
+                  </li>
+                  <li>
+                    <strong>3. Vincula y prueba:</strong> Pega tu Chat ID abajo, activa las alertas y pulsa <em>"Enviar mensaje de prueba a Telegram"</em>.
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <form className="form-stack" onSubmit={saveTelegramSettings}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
+                <input
+                  type="checkbox"
+                  id="telegram-enabled"
+                  checked={telegramEnabled}
+                  onChange={(e) => setTelegramEnabled(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="telegram-enabled" style={{ cursor: 'pointer', fontWeight: 600 }}>
+                  Activar notificaciones de Telegram para esta base de datos
+                </label>
+              </div>
+
+              <div className="form-grid" style={{ paddingTop: '0.5rem' }}>
+                <label className="field">
+                  <span>Chat ID de Telegram</span>
+                  <input
+                    type="text"
+                    value={telegramChatId}
+                    onChange={(e) => setTelegramChatId(e.target.value)}
+                    placeholder="Ej: 123456789 o -100123456789 (canal/grupo)"
+                    disabled={!telegramEnabled}
+                  />
+                  <small>ID numérico de tu usuario, grupo o canal de Telegram.</small>
+                </label>
+
+                <label className="field">
+                  <span>
+                    Bot Token Personalizado{' '}
+                    {database.has_telegram_bot_token && (
+                      <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
+                        (Token guardado ✓)
+                      </span>
+                    )}
+                  </span>
+                  <input
+                    type="password"
+                    value={telegramBotToken}
+                    onChange={(e) => setTelegramBotToken(e.target.value)}
+                    placeholder={
+                      database.has_telegram_bot_token
+                        ? 'Dejar en blanco para mantener el actual'
+                        : 'Opcional. Se cifra de forma segura'
+                    }
+                    disabled={!telegramEnabled}
+                  />
+                  <small>
+                    Opcional. Si lo dejas vacío, se usa el bot predeterminado del sistema.
+                  </small>
+                </label>
+
+                <div className="form-grid__full" style={{ marginTop: '0.25rem' }}>
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: 'var(--text)',
+                      display: 'block',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    Eventos a notificar:
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
+                        opacity: telegramEnabled ? 1 : 0.6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={notifyCritical}
+                        onChange={(e) => setNotifyCritical(e.target.checked)}
+                        disabled={!telegramEnabled}
+                        style={{ accentColor: 'var(--critical)' }}
+                      />
+                      <span>🚨 Crítico y caídas de conexión</span>
+                    </label>
+
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
+                        opacity: telegramEnabled ? 1 : 0.6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={notifyWarning}
+                        onChange={(e) => setNotifyWarning(e.target.checked)}
+                        disabled={!telegramEnabled}
+                        style={{ accentColor: 'var(--warning)' }}
+                      />
+                      <span>⚠️ Advertencias de umbral</span>
+                    </label>
+
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
+                        opacity: telegramEnabled ? 1 : 0.6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={notifyRecovery}
+                        onChange={(e) => setNotifyRecovery(e.target.checked)}
+                        disabled={!telegramEnabled}
+                        style={{ accentColor: 'var(--primary)' }}
+                      />
+                      <span>✅ Recuperación de salud</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                <Button type="submit" busy={busyAction === 'save-telegram'}>
+                  Guardar alertas
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  busy={busyAction === 'test-telegram'}
+                  disabled={!telegramChatId.trim()}
+                  onClick={() => void testTelegram()}
+                >
+                  📱 Enviar mensaje de prueba a Telegram
+                </Button>
+              </div>
+            </form>
+          </Panel>
 
           <Panel
             title="Historial de monitoreo"
