@@ -25,9 +25,7 @@ class DatabaseRegistryService:
         self._cipher = cipher
         self._databases = MonitoredDatabaseRepository(session)
 
-    def register(
-        self, owner: User, command: RegisterMonitoredDatabaseCommand
-    ) -> MonitoredDatabase:
+    def register(self, owner: User, command: RegisterMonitoredDatabaseCommand) -> MonitoredDatabase:
         engine = self._databases.get_engine(command.engine_id)
         if engine is None or not engine.is_enabled:
             raise ConfigurationError("El motor seleccionado no está disponible.")
@@ -39,9 +37,9 @@ class DatabaseRegistryService:
             connection_uri_encrypted=self._cipher.encrypt(command.connection_uri),
         )
         monitored_database.schedule = MonitoringSchedule(interval_seconds=command.interval_seconds)
-        default_profile = ThresholdProfileRepository(self._session).get_default_for_owner_and_engine(
-            owner.id, engine.id
-        )
+        default_profile = ThresholdProfileRepository(
+            self._session
+        ).get_default_for_owner_and_engine(owner.id, engine.id)
         if default_profile is None:
             raise ConfigurationError("No existe un perfil de umbrales para este motor.")
         monitored_database.threshold_assignment = DatabaseThresholdProfile(
@@ -82,7 +80,9 @@ class DatabaseRegistryService:
             monitored_database.schedule.is_enabled = command.is_enabled
             schedule_immediately = command.is_enabled
         if command.telegram_notifications_enabled is not None:
-            monitored_database.telegram_notifications_enabled = command.telegram_notifications_enabled
+            monitored_database.telegram_notifications_enabled = (
+                command.telegram_notifications_enabled
+            )
         if command.telegram_chat_id is not None:
             monitored_database.telegram_chat_id = (
                 command.telegram_chat_id.strip() if command.telegram_chat_id.strip() else None

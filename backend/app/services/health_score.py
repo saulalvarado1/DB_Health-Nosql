@@ -20,9 +20,7 @@ def assess_connection(is_available: bool) -> HealthAssessment:
     return HealthAssessment(0, HealthStatus.CRITICAL, ("La base de datos no responde.",))
 
 
-def assess_metrics(
-    metrics: Mapping[str, float], rules: list[HealthRule]
-) -> HealthAssessment:
+def assess_metrics(metrics: Mapping[str, float], rules: list[HealthRule]) -> HealthAssessment:
     """Evalúa valores atómicos con reglas configurables y penalizaciones acumuladas."""
     score = 100
     has_warning = False

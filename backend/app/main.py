@@ -44,6 +44,18 @@ def create_application() -> FastAPI:
         return JSONResponse(status_code=status_code, content={"detail": str(error)})
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    @app.on_event("startup")
+    def startup_telegram_listener() -> None:
+        token = (
+            settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else None
+        )
+        if token:
+            from app.services.telegram_bot import TelegramBotListener
+
+            listener = TelegramBotListener(bot_token=token)
+            listener.start_background()
+
     return app
 
 

@@ -65,7 +65,9 @@ class MonitoredDatabase(TimestampedModel, Base):
 
     __tablename__ = "monitored_databases"
     __table_args__ = (
-        UniqueConstraint("owner_id", "engine_id", "name", name="uq_monitored_database_owner_engine_name"),
+        UniqueConstraint(
+            "owner_id", "engine_id", "name", name="uq_monitored_database_owner_engine_name"
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -161,7 +163,9 @@ class MetricDefinition(TimestampedModel, Base):
 
     engine: Mapped[DatabaseEngine] = relationship(back_populates="metric_definitions")
     values: Mapped[list["MetricValue"]] = relationship(back_populates="metric_definition")
-    threshold_rules: Mapped[list["ThresholdRule"]] = relationship(back_populates="metric_definition")
+    threshold_rules: Mapped[list["ThresholdRule"]] = relationship(
+        back_populates="metric_definition"
+    )
 
 
 class ThresholdProfile(TimestampedModel, Base):
@@ -169,7 +173,9 @@ class ThresholdProfile(TimestampedModel, Base):
 
     __tablename__ = "threshold_profiles"
     __table_args__ = (
-        UniqueConstraint("owner_id", "engine_id", "name", name="uq_threshold_profile_owner_engine_name"),
+        UniqueConstraint(
+            "owner_id", "engine_id", "name", name="uq_threshold_profile_owner_engine_name"
+        ),
         Index(
             "uq_threshold_profiles_default_per_engine_owner",
             "owner_id",
@@ -202,7 +208,9 @@ class ThresholdRule(TimestampedModel, Base):
 
     __tablename__ = "threshold_rules"
     __table_args__ = (
-        UniqueConstraint("profile_id", "metric_definition_id", name="uq_threshold_rule_profile_metric"),
+        UniqueConstraint(
+            "profile_id", "metric_definition_id", name="uq_threshold_rule_profile_metric"
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -234,7 +242,9 @@ class DatabaseThresholdProfile(TimestampedModel, Base):
         Uuid, ForeignKey("threshold_profiles.id", ondelete="RESTRICT"), nullable=False
     )
 
-    monitored_database: Mapped[MonitoredDatabase] = relationship(back_populates="threshold_assignment")
+    monitored_database: Mapped[MonitoredDatabase] = relationship(
+        back_populates="threshold_assignment"
+    )
     profile: Mapped[ThresholdProfile] = relationship(back_populates="assignments")
 
 
@@ -272,7 +282,9 @@ class MetricValue(Base):
 
     __tablename__ = "metric_values"
     __table_args__ = (
-        UniqueConstraint("sample_id", "metric_definition_id", name="uq_metric_value_sample_definition"),
+        UniqueConstraint(
+            "sample_id", "metric_definition_id", name="uq_metric_value_sample_definition"
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)

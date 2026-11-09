@@ -56,12 +56,15 @@ class TelegramNotificationService:
         chat_id: str,
         text: str,
         parse_mode: str = "HTML",
+        reply_markup: dict[str, Any] | None = None,
     ) -> TelegramDeliveryResult:
         """Envía un mensaje directo a Telegram via HTTP POST."""
         clean_token = bot_token.strip()
         clean_chat_id = chat_id.strip()
         if not clean_token:
-            return TelegramDeliveryResult(delivered=False, error_message="Token de bot no configurado.")
+            return TelegramDeliveryResult(
+                delivered=False, error_message="Token de bot no configurado."
+            )
         if not clean_chat_id:
             return TelegramDeliveryResult(delivered=False, error_message="Chat ID no configurado.")
 
@@ -72,6 +75,8 @@ class TelegramNotificationService:
             "parse_mode": parse_mode,
             "disable_web_page_preview": True,
         }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
 
         try:
             if self._http_client is not None:
@@ -134,7 +139,20 @@ class TelegramNotificationService:
             f"<b>Fecha:</b> {now_str}\n\n"
             "<i>Recibirás alertas en este chat cuando el estado de tu base de datos cambie según las reglas configuradas.</i>"
         )
-        return self.send_message(bot_token=token, chat_id=chat_id, text=message)
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🌐 Abrir Dashboard",
+                        "url": "https://frontend-production-07c5.up.railway.app",
+                    },
+                    {"text": "📊 Ver Estado", "callback_data": f"status:{database.id}"},
+                ]
+            ]
+        }
+        return self.send_message(
+            bot_token=token, chat_id=chat_id, text=message, reply_markup=reply_markup
+        )
 
     def notify_alert_event(
         self,
@@ -187,4 +205,23 @@ class TelegramNotificationService:
             f"<b>Fecha:</b> {now_str}"
         )
 
-        return self.send_message(bot_token=bot_token, chat_id=database.telegram_chat_id, text=text)
+        buttons = [
+            [
+                {
+                    "text": "🌐 Ver en Dashboard",
+                    "url": f"https://frontend-production-07c5.up.railway.app/databases/{database.id}",
+                }
+            ]
+        ]
+        if event_type in {"warning", "critical"}:
+            buttons[0].append(
+                {"text": "👁️ Reconocer Incidente", "callback_data": f"ack:{database.id}"}
+            )
+
+        reply_markup = {"inline_keyboard": buttons}
+        return self.send_message(
+            bot_token=bot_token,
+            chat_id=database.telegram_chat_id,
+            text=text,
+            reply_markup=reply_markup,
+        )

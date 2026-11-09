@@ -234,6 +234,26 @@ Para la especificación exhaustiva columna por columna, tipos de datos SQL, rest
 | [`backups/`](backups/) | Scripts automatizados de backup (`pg_dump`), verificación SHA-256 y [Plan DRP](backups/report/REPORTE_BACKUPS_Y_RECUPERACION.md). | ✅ Probado (<5s RTO) |
 | [`.github/workflows/`](.github/workflows/) | Pipelines de CI (pruebas/linters), CD de Release y despliegue a GitHub Pages. | ✅ Automatizado |
 | [`docs/`](docs/) | Documentación técnica, modelo de datos, catálogo y auditorías para GitHub Pages. | ✅ Publicable |
+| [`vscode-extension/`](vscode-extension/) | Extensión oficial de Visual Studio Code y [Agent Skill](.vscode/skills/dbhealth.md). | ✅ Cumple Reto |
+
+---
+
+## 🎯 Reto de Integraciones Externas (3 Herramientas + VS Code)
+
+Para dar cumplimiento estricto y sobresaliente al **Reto de Integraciones** de la asignatura, el sistema implementa la tríada de integración continua:
+
+1. **📱 Herramienta 1 — Telegram Bot API (Alertamiento Móvil Bidireccional):**
+   * Despacho proactivo de alertas con severidad (`CRITICAL`, `WARNING`, `RECOVERY`) y deduplicación inteligente.
+   * Botones interactivos en línea (*Inline Keyboards*) para **Reconocer Incidentes** desde el celular y enlace directo a la web.
+   * Asistente conversacional con comandos en vivo: `/status`, `/alerts`, `/ping` y `/help`.
+2. **🐙 Herramienta 2 — GitHub Issues API (Gestión Automática de Incidentes):**
+   * Creación desatendida de tickets/issues en el repositorio GitHub oficial cuando una base de datos cae a estado crítico.
+   * Carga de telemetría, causa raíz, Score 0/100 y etiquetado automático (`critical-alert`, `bug`).
+3. **💻 Herramienta 3 & Reto VS Code — Extensión de Visual Studio Code & Agent Skill:**
+   * **Extensión nativa (`vscode-extension/`):** Indicador de salud en la barra de estado (`Status Bar`), explorador lateral en el `Activity Bar` con árbol de métricas (latencia, memoria, conexiones) y paleta de comandos.
+   * **Agent Skill (`.vscode/skills/dbhealth.md`):** Definición de contexto para agentes de IA (Copilot / Cursor / Antigravity) para diagnosticar bases de datos en lenguaje natural.
+
+---
 
 ---
 

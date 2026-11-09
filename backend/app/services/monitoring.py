@@ -1,6 +1,9 @@
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import Session
 
@@ -83,7 +86,9 @@ class MonitoringService:
                 )
 
         configured_rules = self._threshold_profiles.rules_for_database(monitored_database.id)
-        health_rules = [self._health_rule(rule, definition) for rule, definition in configured_rules]
+        health_rules = [
+            self._health_rule(rule, definition) for rule, definition in configured_rules
+        ]
         assessment = assess_metrics(collected_metrics, health_rules)
         sample.health_assessment = HealthAssessment(
             score=assessment.score,
@@ -201,6 +206,8 @@ class MonitoringService:
                     health_score=health_score,
                     health_status=health_status,
                 )
+                if signal.severity == HealthStatus.CRITICAL:
+                    self._dispatch_github_issue(monitored_database, signal.message, health_score)
             elif prev_severity == "warning" and signal.severity.value == "critical":
                 self._notifier.notify_alert_event(
                     monitored_database,
@@ -208,6 +215,11 @@ class MonitoringService:
                     message=f"Escalamiento a crítico: {signal.message}",
                     health_score=health_score,
                     health_status=health_status,
+                )
+                self._dispatch_github_issue(
+                    monitored_database,
+                    f"Escalamiento a crítico: {signal.message}",
+                    health_score,
                 )
 
         if (
@@ -222,6 +234,24 @@ class MonitoringService:
                 health_score=health_score,
                 health_status=health_status,
             )
+
+    @staticmethod
+    def _dispatch_github_issue(
+        monitored_database: MonitoredDatabase,
+        error_detail: str,
+        health_score: int,
+    ) -> None:
+        try:
+            from app.services.github_issues import GitHubIssueService
+
+            GitHubIssueService().create_critical_alert_issue(
+                database_name=monitored_database.name,
+                engine_id=monitored_database.engine_id,
+                health_score=health_score,
+                error_detail=error_detail,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("Omitiendo despacho de GitHub Issue.")
 
     @staticmethod
     def _health_rule(rule: ThresholdRule, definition: MetricDefinition) -> HealthRule:

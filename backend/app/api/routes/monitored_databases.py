@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -120,9 +121,7 @@ def test_telegram_notification(
 
     custom_chat_id = request.chat_id.strip() if request and request.chat_id else None
     custom_bot_token = (
-        request.bot_token.get_secret_value().strip()
-        if request and request.bot_token
-        else None
+        request.bot_token.get_secret_value().strip() if request and request.bot_token else None
     )
 
     cipher = CredentialsCipher()
@@ -141,6 +140,33 @@ def test_telegram_notification(
         success=True,
         message="Mensaje de prueba enviado exitosamente a Telegram.",
     )
+
+
+@router.post("/{database_id}/github-issue-test")
+def test_github_issue(
+    database_id: UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    from app.services.github_issues import GitHubIssueService
+
+    cipher = CredentialsCipher()
+    database = DatabaseRegistryService(session, cipher).get_for_owner(database_id, current_user.id)
+    service = GitHubIssueService()
+    result = service.create_critical_alert_issue(
+        database_name=database.name,
+        engine_id=database.engine_id,
+        health_score=0,
+        error_detail="Simulación de alerta crítica: falla de conectividad en puerto primario.",
+        labels=["critical-alert", "automated-monitoring"],
+    )
+    if not result.created:
+        raise ConfigurationError(result.error_message or "No fue posible crear el issue en GitHub.")
+    return {
+        "success": True,
+        "message": f"GitHub Issue #{result.issue_number} generado exitosamente.",
+        "issue_url": result.issue_url,
+    }
 
 
 @router.delete("/{database_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -234,4 +260,3 @@ def export_health_report(
             "Content-Disposition": f'attachment; filename="reporte_salud_{slug}_{date_str}.csv"'
         },
     )
-

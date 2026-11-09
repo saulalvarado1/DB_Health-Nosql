@@ -125,6 +125,12 @@ def run_forever() -> None:
         batch_size=settings.monitoring_worker_batch_size,
     )
     logger.info("Worker de monitoreo iniciado.")
+    token = settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else None
+    if token:
+        from app.services.telegram_bot import TelegramBotListener
+
+        listener = TelegramBotListener(bot_token=token)
+        listener.start_background()
     while True:
         try:
             summary = worker.run_once()

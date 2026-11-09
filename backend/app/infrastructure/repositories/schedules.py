@@ -49,7 +49,9 @@ class MonitoringScheduleRepository:
         self._session.commit()
         return schedule_ids
 
-    def get_claimed(self, schedule_id: UUID, worker_id: str, now: datetime) -> MonitoringSchedule | None:
+    def get_claimed(
+        self, schedule_id: UUID, worker_id: str, now: datetime
+    ) -> MonitoringSchedule | None:
         statement = (
             select(MonitoringSchedule)
             .options(joinedload(MonitoringSchedule.monitored_database))

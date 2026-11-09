@@ -1,0 +1,82 @@
+{
+  "name": "db-health-monitor",
+  "displayName": "DB Health Monitor",
+  "description": "Observabilidad proactiva y diagnóstico de salud para MongoDB y Redis en tiempo real directamente en Visual Studio Code.",
+  "version": "1.0.0",
+  "publisher": "grupo3-upt-faing",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dbhealth-activitybar",
+          "title": "DB Health Monitor",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "dbhealth-activitybar": [
+        {
+          "id": "dbhealth.databasesView",
+          "name": "Bases de Datos Monitoreadas"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "dbhealth.refresh",
+        "title": "DB Health: Refrescar Estado",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dbhealth.openDashboard",
+        "title": "DB Health: Abrir Dashboard Web",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "dbhealth.quickStatus",
+        "title": "DB Health: Mostrar Resumen de Salud"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "dbhealth.refresh",
+          "when": "view == dbhealth.databasesView",
+          "group": "navigation"
+        },
+        {
+          "command": "dbhealth.openDashboard",
+          "when": "view == dbhealth.databasesView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DB Health Monitor",
+      "properties": {
+        "dbhealth.apiUrl": {
+          "type": "string",
+          "default": "https://frontend-production-07c5.up.railway.app",
+          "description": "URL base de la API de DB Health Monitor."
+        },
+        "dbhealth.autoRefreshSeconds": {
+          "type": "number",
+          "default": 30,
+          "description": "Intervalo de actualización automática en segundos."
+        }
+      }
+    }
+  }
+}
