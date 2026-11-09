@@ -1,0 +1,127 @@
+name: CI - DB Health Monitor
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-test-and-lint:
+    name: Backend Lint & Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: db_health_monitor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Ruff Linter
+        working-directory: backend
+        run: ruff check .
+
+      - name: Apply database migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/db_health_monitor_test
+          JWT_SECRET_KEY: test-jwt-secret-not-for-production
+          CREDENTIALS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+        run: alembic upgrade head
+
+      - name: Run Pytest test suite
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/db_health_monitor_test
+          TEST_DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/db_health_monitor_test
+          JWT_SECRET_KEY: test-jwt-secret-not-for-production
+          CREDENTIALS_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+        run: pytest -m "not real_services" -v
+
+  frontend-test-and-lint:
+    name: Frontend Lint, Tests & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run Vitest unit tests
+        working-directory: frontend
+        run: npm run test
+
+      - name: Build production bundle
+        working-directory: frontend
+        run: npm run build
+
+  docker-build-verification:
+    name: Verify Docker Container Builds
+    needs: [backend-test-and-lint, frontend-test-and-lint]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          tags: db-health-monitor-backend:ci-check
+
+      - name: Build Frontend Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: false
+          tags: db-health-monitor-frontend:ci-check

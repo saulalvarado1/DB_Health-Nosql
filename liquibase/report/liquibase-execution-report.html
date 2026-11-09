@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Ejecución de Migraciones — Liquibase</title>
+    <style>
+        :root {
+            --bg: #0b132b;
+            --surface: #1c2541;
+            --surface-hover: #243054;
+            --primary: #48cae4;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --text: #f8f9fa;
+            --text-muted: #8d99ae;
+            --border: #3a506b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { background: var(--surface); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .badge { background: rgba(6, 214, 160, 0.15); color: var(--success); border: 1px solid var(--success); padding: 0.35rem 0.85rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; border-radius: 10px; text-align: center; }
+        .stat-card h3 { font-size: 2.2rem; color: var(--primary); margin-bottom: 0.25rem; }
+        .stat-card p { color: var(--text-muted); font-size: 0.9rem; }
+        .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        th { background: #131c35; color: var(--primary); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
+        tr:hover { background-color: var(--surface-hover); }
+        .status-tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background: rgba(6, 214, 160, 0.2); color: var(--success); }
+        code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; color: #a5d6a7; font-size: 0.85rem; }
+        footer { margin-top: 2rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1 style="color: var(--primary); margin-bottom: 0.5rem;">Liquibase Execution Report</h1>
+                <p style="color: var(--text-muted);">Proyecto: <strong>DB Health Monitor (v1.0)</strong> · Universidad Privada de Tacna (UPT)</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Motor: PostgreSQL 16 (Relacional 3FN) · Esquema: <code>public</code></p>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge">100% EXECUTED · 0 ERRORS</span>
+                <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">Última sincronización: 04/10/2026</p>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>12</h3>
+                <p>ChangeSets Aplicados</p>
+            </div>
+            <div class="stat-card">
+                <h3 style="color: var(--success);">0</h3>
+                <p>Errores / Fallas</p>
+            </div>
+            <div class="stat-card">
+                <h3>47</h3>
+                <p>Métricas Versionadas</p>
+            </div>
+            <div class="stat-card">
+                <h3 style="color: var(--warning);">3FN</h3>
+                <p>Normalización de Esquema</p>
+            </div>
+        </section>
+
+        <section class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>ChangeSet ID</th>
+                        <th>Autor</th>
+                        <th>Archivo Fuente</th>
+                        <th>Descripción Funcional</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>#1</strong></td>
+                        <td><code>01-create-table-users</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Crea la tabla de usuarios con contraseñas Argon2 y roles</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#2</strong></td>
+                        <td><code>02-create-table-database-engines</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Catálogo maestro de motores soportados (MongoDB y Redis)</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#3</strong></td>
+                        <td><code>03-create-table-monitored-databases</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Registro de instancias con aislamiento por usuario (owner_id)</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#4</strong></td>
+                        <td><code>04-create-table-monitoring-schedules</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Tabla de arrendamiento concurrente (Lease / Skip Locked)</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#5</strong></td>
+                        <td><code>05-create-table-metric-definitions</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Definiciones de métricas con dirección de alerta</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#6</strong></td>
+                        <td><code>06-create-table-threshold-profiles-and-rules</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Perfiles de umbrales configurables y reglas warning/critical</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#7</strong></td>
+                        <td><code>07-create-table-samples-values-and-health</code></td>
+                        <td>group-3</td>
+                        <td>01-create-initial-schema.xml</td>
+                        <td>Muestras inmutables, valores atómicos, Health Score y Alertas</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#8</strong></td>
+                        <td><code>02-insert-initial-seeds</code></td>
+                        <td>group-3</td>
+                        <td>02-insert-initial-seeds.xml</td>
+                        <td>Inserción de semillas maestras para MongoDB y Redis</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#9</strong></td>
+                        <td><code>03-expand-metric-catalog-batch1</code></td>
+                        <td>group-3</td>
+                        <td>03-expand-metric-catalog.xml</td>
+                        <td>Ampliación a 20 métricas (WiredTiger, fragmentación)</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#10</strong></td>
+                        <td><code>03-expand-metric-catalog-batch2</code></td>
+                        <td>group-3</td>
+                        <td>03-expand-metric-catalog.xml</td>
+                        <td>Ampliación a 47 métricas (cursores, replicación, pubsub)</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#11</strong></td>
+                        <td><code>04-add-alert-deduplication</code></td>
+                        <td>group-3</td>
+                        <td>04-add-alert-deduplication.xml</td>
+                        <td>Clave de deduplicación de alertas e índice único activo</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#12</strong></td>
+                        <td><code>05-add-telegram-notification-columns</code></td>
+                        <td>group-3</td>
+                        <td>05-add-telegram-notification-columns.xml</td>
+                        <td>Columnas de configuración para notificaciones push con Telegram</td>
+                        <td><span class="status-tag">EXECUTED</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p>Generado automáticamente para evaluación de la asignatura SI-783 Base de Datos II · UPT FAING EPIS</p>
+            <p>Liquibase Community Edition v4.27 · PostgreSQL 16 Driver <code>org.postgresql.Driver</code></p>
+        </footer>
+    </div>
+</body>
+</html>

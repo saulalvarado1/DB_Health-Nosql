@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="04-add-alert-deduplication" author="group-3">
+        <comment>Agrega deduplication_key a la tabla alerts para evitar alertas duplicadas en bucle</comment>
+        <addColumn tableName="alerts">
+            <column name="deduplication_key" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            CREATE UNIQUE INDEX uq_alerts_database_dedup_active
+            ON alerts (monitored_database_id, deduplication_key)
+            WHERE status IN ('open', 'acknowledged');
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS uq_alerts_database_dedup_active;
+            </sql>
+            <dropColumn tableName="alerts" columnName="deduplication_key"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

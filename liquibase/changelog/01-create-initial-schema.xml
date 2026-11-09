@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 01: TABLA USERS                                         -->
+    <!-- ================================================================= -->
+    <changeSet id="01-create-table-users" author="group-3">
+        <comment>Crea la tabla de usuarios de la plataforma con contraseñas hasheadas</comment>
+        <createTable tableName="users">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_users_email"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="users"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 02: TABLA DATABASE_ENGINES                              -->
+    <!-- ================================================================= -->
+    <changeSet id="02-create-table-database-engines" author="group-3">
+        <comment>Catálogo de motores NoSQL soportados (mongodb, redis)</comment>
+        <createTable tableName="database_engines">
+            <column name="id" type="VARCHAR(40)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="database_engines"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 03: TABLA MONITORED_DATABASES                           -->
+    <!-- ================================================================= -->
+    <changeSet id="03-create-table-monitored-databases" author="group-3">
+        <comment>Instancias MongoDB y Redis registradas por cada usuario</comment>
+        <createTable tableName="monitored_databases">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="owner_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_monitored_databases_owner" references="users(id)"/>
+            </column>
+            <column name="engine_id" type="VARCHAR(40)">
+                <constraints nullable="false" foreignKeyName="fk_monitored_databases_engine" references="database_engines(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="connection_uri_encrypted" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interval_seconds" type="INTEGER" defaultValueNumeric="30">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="monitored_databases" columnNames="owner_id, engine_id, name" constraintName="uq_monitored_database_owner_engine_name"/>
+        <createIndex tableName="monitored_databases" indexName="ix_monitored_databases_owner_id">
+            <column name="owner_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="monitored_databases"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 04: TABLA MONITORING_SCHEDULES (CONCURRENT WORKER)      -->
+    <!-- ================================================================= -->
+    <changeSet id="04-create-table-monitoring-schedules" author="group-3">
+        <comment>Planificador y arrendamiento concurrente de recolección (Skip Locked)</comment>
+        <createTable tableName="monitoring_schedules">
+            <column name="monitored_database_id" type="UUID">
+                <constraints primaryKey="true" nullable="false" foreignKeyName="fk_schedules_database" references="monitored_databases(id)"/>
+            </column>
+            <column name="next_run_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_run_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="lease_owner" type="VARCHAR(100)"/>
+            <column name="lease_expires_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="monitoring_schedules" indexName="ix_schedules_next_run_lease">
+            <column name="next_run_at"/>
+            <column name="lease_expires_at"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="monitoring_schedules"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 05: TABLA METRIC_DEFINITIONS                            -->
+    <!-- ================================================================= -->
+    <changeSet id="05-create-table-metric-definitions" author="group-3">
+        <comment>Catálogo formal de métricas soportadas por motor</comment>
+        <createTable tableName="metric_definitions">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="engine_id" type="VARCHAR(40)">
+                <constraints nullable="false" foreignKeyName="fk_metric_definitions_engine" references="database_engines(id)"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alert_direction" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="metric_definitions" columnNames="engine_id, code" constraintName="uq_metric_definitions_engine_code"/>
+        <rollback>
+            <dropTable tableName="metric_definitions"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 06: TABLAS THRESHOLD_PROFILES & THRESHOLD_RULES         -->
+    <!-- ================================================================= -->
+    <changeSet id="06-create-table-threshold-profiles-and-rules" author="group-3">
+        <comment>Perfiles y reglas de umbrales para evaluación de salud</comment>
+        <createTable tableName="threshold_profiles">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="owner_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_threshold_profiles_owner" references="users(id)"/>
+            </column>
+            <column name="engine_id" type="VARCHAR(40)">
+                <constraints nullable="false" foreignKeyName="fk_threshold_profiles_engine" references="database_engines(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="threshold_profiles" columnNames="owner_id, engine_id, name" constraintName="uq_threshold_profile_owner_engine_name"/>
+
+        <createTable tableName="threshold_rules">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="profile_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_threshold_rules_profile" references="threshold_profiles(id)"/>
+            </column>
+            <column name="metric_definition_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_threshold_rules_definition" references="metric_definitions(id)"/>
+            </column>
+            <column name="warning_value" type="NUMERIC(18, 6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="critical_value" type="NUMERIC(18, 6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="threshold_rules" columnNames="profile_id, metric_definition_id" constraintName="uq_threshold_rule_profile_metric"/>
+
+        <createTable tableName="database_threshold_profiles">
+            <column name="monitored_database_id" type="UUID">
+                <constraints primaryKey="true" nullable="false" foreignKeyName="fk_db_threshold_profile_db" references="monitored_databases(id)"/>
+            </column>
+            <column name="threshold_profile_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_db_threshold_profile_profile" references="threshold_profiles(id)"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="database_threshold_profiles"/>
+            <dropTable tableName="threshold_rules"/>
+            <dropTable tableName="threshold_profiles"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ================================================================= -->
+    <!-- CHANGESET 07: TABLAS METRIC_SAMPLES, METRIC_VALUES, HEALTH_SCORE  -->
+    <!-- ================================================================= -->
+    <changeSet id="07-create-table-samples-values-and-health" author="group-3">
+        <comment>Muestras históricas inmutables, valores atómicos y evaluaciones de salud</comment>
+        <createTable tableName="metric_samples">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="monitored_database_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_metric_samples_database" references="monitored_databases(id)"/>
+            </column>
+            <column name="collected_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="collection_succeeded" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="TEXT"/>
+        </createTable>
+        <createIndex tableName="metric_samples" indexName="ix_metric_samples_database_collected">
+            <column name="monitored_database_id"/>
+            <column name="collected_at"/>
+        </createIndex>
+
+        <createTable tableName="metric_values">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_metric_values_sample" references="metric_samples(id)"/>
+            </column>
+            <column name="metric_definition_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_metric_values_definition" references="metric_definitions(id)"/>
+            </column>
+            <column name="numeric_value" type="NUMERIC(20, 6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="metric_values" columnNames="sample_id, metric_definition_id" constraintName="uq_metric_value_sample_definition"/>
+
+        <createTable tableName="health_assessments">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="UUID">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_health_assessments_sample" references="metric_samples(id)"/>
+            </column>
+            <column name="score" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="evaluated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE health_assessments ADD CONSTRAINT ck_health_assessment_score_range CHECK (score &gt;= 0 AND score &lt;= 100);
+            ALTER TABLE health_assessments ADD CONSTRAINT ck_health_assessment_status CHECK (status IN ('healthy', 'warning', 'critical', 'unknown'));
+        </sql>
+
+        <createTable tableName="alerts">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="monitored_database_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_alerts_database" references="monitored_databases(id)"/>
+            </column>
+            <column name="sample_id" type="UUID">
+                <constraints foreignKeyName="fk_alerts_sample" references="metric_samples(id)"/>
+            </column>
+            <column name="threshold_rule_id" type="UUID">
+                <constraints foreignKeyName="fk_alerts_threshold_rule" references="threshold_rules(id)"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="open">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE alerts ADD CONSTRAINT ck_alert_severity CHECK (severity IN ('warning', 'critical'));
+            ALTER TABLE alerts ADD CONSTRAINT ck_alert_status CHECK (status IN ('open', 'acknowledged', 'resolved'));
+        </sql>
+        <createIndex tableName="alerts" indexName="ix_alerts_database_status">
+            <column name="monitored_database_id"/>
+            <column name="status"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="alerts"/>
+            <dropTable tableName="health_assessments"/>
+            <dropTable tableName="metric_values"/>
+            <dropTable tableName="metric_samples"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

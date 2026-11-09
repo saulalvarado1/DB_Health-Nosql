@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- ================================================================= -->
+    <!-- MASTER CHANGELOG — DB HEALTH MONITOR (POSTGRESQL)                -->
+    <!-- Orquestación secuencial de migraciones de base de datos           -->
+    <!-- ================================================================= -->
+
+    <!-- 01: Creación del esquema relacional base (Tablas, llaves, constraints) -->
+    <include file="01-create-initial-schema.xml" relativeToChangelogFile="true"/>
+
+    <!-- 02: Inserción de semillas base (Motores NoSQL y catálogo inicial) -->
+    <include file="02-insert-initial-seeds.xml" relativeToChangelogFile="true"/>
+
+    <!-- 03: Ampliación del catálogo de métricas operativas (47 métricas) -->
+    <include file="03-expand-metric-catalog.xml" relativeToChangelogFile="true"/>
+
+    <!-- 04: Deduplicación inteligente de alertas en tiempo real -->
+    <include file="04-add-alert-deduplication.xml" relativeToChangelogFile="true"/>
+
+    <!-- 05: Columnas para integración de alertas push con Telegram Bot -->
+    <include file="05-add-telegram-notification-columns.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="03-expand-metric-catalog-batch1" author="group-3">
+        <comment>Ampliación del catálogo con métricas operativas y de caché (Fase 1)</comment>
+        
+        <!-- MongoDB Batch 1 -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000105"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="connections_usage_percent"/>
+            <column name="display_name" value="Uso de conexiones"/>
+            <column name="unit" value="percent"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Porcentaje de conexiones actuales sobre la capacidad reportada."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000106"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="uptime_seconds"/>
+            <column name="display_name" value="Tiempo activo"/>
+            <column name="unit" value="seconds"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Segundos transcurridos desde el último inicio de MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000107"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="network_bytes_in"/>
+            <column name="display_name" value="Red recibida"/>
+            <column name="unit" value="bytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Bytes recibidos acumulados desde el inicio de MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000108"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="network_bytes_out"/>
+            <column name="display_name" value="Red enviada"/>
+            <column name="unit" value="bytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Bytes enviados acumulados desde el inicio de MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000109"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="wiredtiger_cache_usage_percent"/>
+            <column name="display_name" value="Uso de caché WiredTiger"/>
+            <column name="unit" value="percent"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Porcentaje de la caché WiredTiger que está en uso."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <!-- Redis Batch 1 -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000207"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="blocked_clients"/>
+            <column name="display_name" value="Clientes bloqueados"/>
+            <column name="unit" value="clients"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Clientes esperando una operación bloqueante en Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000208"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="evicted_keys"/>
+            <column name="display_name" value="Claves expulsadas"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Claves expulsadas acumuladas por el límite de memoria de Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000209"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="keyspace_hit_rate_percent"/>
+            <column name="display_name" value="Aciertos de caché"/>
+            <column name="unit" value="percent"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Porcentaje de búsquedas de claves que Redis resolvió con éxito."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000210"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="memory_fragmentation_ratio"/>
+            <column name="display_name" value="Fragmentación de memoria"/>
+            <column name="unit" value="ratio"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Relación entre memoria residente y memoria asignada por Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000211"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="uptime_seconds"/>
+            <column name="display_name" value="Tiempo activo"/>
+            <column name="unit" value="seconds"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Segundos transcurridos desde el último inicio de Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="metric_definitions">
+                <where>code IN ('connections_usage_percent', 'uptime_seconds', 'network_bytes_in', 'network_bytes_out', 'wiredtiger_cache_usage_percent', 'blocked_clients', 'evicted_keys', 'keyspace_hit_rate_percent', 'memory_fragmentation_ratio')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="03-expand-metric-catalog-batch2" author="group-3">
+        <comment>Ampliación total a 47 métricas: bloqueos, cursores, replicación, pubsub y persistencia</comment>
+        
+        <!-- MongoDB Batch 2 -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000110"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="connections_available"/>
+            <column name="display_name" value="Conexiones disponibles"/>
+            <column name="unit" value="connections"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Conexiones adicionales que MongoDB puede aceptar."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000111"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="connections_active"/>
+            <column name="display_name" value="Conexiones activas"/>
+            <column name="unit" value="connections"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Conexiones que ejecutan operaciones en ese instante."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000112"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="global_lock_queue_total"/>
+            <column name="display_name" value="Operaciones en espera"/>
+            <column name="unit" value="operations"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Operaciones esperando adquirir un bloqueo."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000113"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="global_lock_active_clients"/>
+            <column name="display_name" value="Clientes activos"/>
+            <column name="unit" value="clients"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Clientes activos reportados por el estado del bloqueo global."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000114"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="open_cursors"/>
+            <column name="display_name" value="Cursores abiertos"/>
+            <column name="unit" value="cursors"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Cursores abiertos actualmente en MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000115"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="documents_read_total"/>
+            <column name="display_name" value="Documentos devueltos"/>
+            <column name="unit" value="documents"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Documentos devueltos acumulados desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000116"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="documents_written_total"/>
+            <column name="display_name" value="Documentos escritos"/>
+            <column name="unit" value="documents"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Documentos insertados, actualizados o eliminados desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000117"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="query_scanned_keys_total"/>
+            <column name="display_name" value="Claves de índice examinadas"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Entradas de índice examinadas acumuladas por el ejecutor de consultas."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000118"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="query_scanned_documents_total"/>
+            <column name="display_name" value="Documentos examinados"/>
+            <column name="unit" value="documents"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Documentos examinados acumulados por el ejecutor de consultas."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000119"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="wiredtiger_cache_dirty_percent"/>
+            <column name="display_name" value="Caché sucia WiredTiger"/>
+            <column name="unit" value="percent"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Porcentaje de la capacidad de caché ocupado por datos modificados pendientes."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000120"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="network_requests_total"/>
+            <column name="display_name" value="Solicitudes de red"/>
+            <column name="unit" value="requests"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Solicitudes de red acumuladas desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <!-- Redis Batch 2 -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000212"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="total_connections_received"/>
+            <column name="display_name" value="Conexiones recibidas"/>
+            <column name="unit" value="connections"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Conexiones aceptadas acumuladas desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000213"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="total_commands_processed"/>
+            <column name="display_name" value="Comandos procesados"/>
+            <column name="unit" value="operations"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Comandos procesados acumulados desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000214"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="expired_keys"/>
+            <column name="display_name" value="Claves expiradas"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Claves expiradas acumuladas desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000215"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="keyspace_hits_total"/>
+            <column name="display_name" value="Aciertos acumulados"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Búsquedas de claves encontradas desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000216"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="keyspace_misses_total"/>
+            <column name="display_name" value="Fallos acumulados"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Búsquedas de claves no encontradas desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000217"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="network_input_bytes_total"/>
+            <column name="display_name" value="Red recibida"/>
+            <column name="unit" value="bytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Bytes recibidos acumulados desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000218"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="network_output_bytes_total"/>
+            <column name="display_name" value="Red enviada"/>
+            <column name="unit" value="bytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Bytes enviados acumulados desde el último inicio."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000219"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="instantaneous_input_kbps"/>
+            <column name="display_name" value="Entrada de red"/>
+            <column name="unit" value="kilobytes/second"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Tráfico entrante instantáneo informado por Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000220"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="instantaneous_output_kbps"/>
+            <column name="display_name" value="Salida de red"/>
+            <column name="unit" value="kilobytes/second"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Tráfico saliente instantáneo informado por Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000221"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="pubsub_channels"/>
+            <column name="display_name" value="Canales Pub/Sub"/>
+            <column name="unit" value="channels"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Canales Pub/Sub con suscriptores activos."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000222"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="keys_total"/>
+            <column name="display_name" value="Claves almacenadas"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Suma de claves almacenadas en todas las bases lógicas."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000223"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="expiring_keys_total"/>
+            <column name="display_name" value="Claves con expiración"/>
+            <column name="unit" value="keys"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Suma de claves con tiempo de expiración configurado."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000224"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="connected_replicas"/>
+            <column name="display_name" value="Réplicas conectadas"/>
+            <column name="unit" value="replicas"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Réplicas conectadas al nodo cuando actúa como primario."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000225"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="latest_fork_microseconds"/>
+            <column name="display_name" value="Duración del último fork"/>
+            <column name="unit" value="microseconds"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Microsegundos empleados por la última operación fork."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000226"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="persistence_last_save_success"/>
+            <column name="display_name" value="Último guardado"/>
+            <column name="unit" value="success_boolean"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="Indica si el último guardado RDB en segundo plano terminó correctamente."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000227"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="loading"/>
+            <column name="display_name" value="Carga de datos"/>
+            <column name="unit" value="loading_boolean"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Indica si Redis está cargando el conjunto de datos."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="metric_definitions">
+                <where>code IN ('connections_available', 'connections_active', 'global_lock_queue_total', 'global_lock_active_clients', 'open_cursors', 'documents_read_total', 'documents_written_total', 'query_scanned_keys_total', 'query_scanned_documents_total', 'wiredtiger_cache_dirty_percent', 'network_requests_total', 'total_connections_received', 'total_commands_processed', 'expired_keys', 'keyspace_hits_total', 'keyspace_misses_total', 'network_input_bytes_total', 'network_output_bytes_total', 'instantaneous_input_kbps', 'instantaneous_output_kbps', 'pubsub_channels', 'keys_total', 'expiring_keys_total', 'connected_replicas', 'latest_fork_microseconds', 'persistence_last_save_success', 'loading')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

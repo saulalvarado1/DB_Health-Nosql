@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="05-add-telegram-notification-columns" author="group-3">
+        <comment>Agrega soporte para notificaciones directas a Telegram Bot en monitored_databases</comment>
+        <addColumn tableName="monitored_databases">
+            <column name="telegram_notifications_enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="telegram_chat_id" type="VARCHAR(100)"/>
+            <column name="telegram_bot_token_encrypted" type="TEXT"/>
+            <column name="notify_on_warning" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notify_on_critical" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notify_on_recovery" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="monitored_databases" columnName="telegram_notifications_enabled"/>
+            <dropColumn tableName="monitored_databases" columnName="telegram_chat_id"/>
+            <dropColumn tableName="monitored_databases" columnName="telegram_bot_token_encrypted"/>
+            <dropColumn tableName="monitored_databases" columnName="notify_on_warning"/>
+            <dropColumn tableName="monitored_databases" columnName="notify_on_critical"/>
+            <dropColumn tableName="monitored_databases" columnName="notify_on_recovery"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

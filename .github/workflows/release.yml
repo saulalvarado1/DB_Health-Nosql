@@ -1,0 +1,54 @@
+name: Release - DB Health Monitor
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Nombre de la etiqueta de versión (ej: v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Release Tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "Release ${{ steps.vars.outputs.tag }} — DB Health Monitor"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          body: |
+            ## DB Health Monitor — Versión Oficial
+
+            ### Características Principales
+            - Monitoreo agentless en tiempo real para **MongoDB** y **Redis**.
+            - Algoritmo determinista de cálculo de salud (Health Score 0-100).
+            - Notificaciones automáticas de incidentes vía **Telegram Bot**.
+            - Interfaz reactiva en React 19 + TypeScript con gráficos históricos en SVG.
+            - Almacenamiento relacional en PostgreSQL 16 con migraciones Alembic.
+            - Cifrado simétrico AES-128 Fernet para credenciales sensibles y contraseñas con Argon2.

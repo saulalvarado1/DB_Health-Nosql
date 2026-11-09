@@ -17,3 +17,7 @@ coverage/
 playwright-report/
 test-results/
 .railway/
+backups/storage/*.dump
+backups/storage/*.sha256
+backups/logs/*.log
+*.zip

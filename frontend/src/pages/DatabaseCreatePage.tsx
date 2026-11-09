@@ -61,7 +61,13 @@ export function DatabaseCreatePage() {
 
           <label className="field">
             <span>Nombre de la instancia</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required placeholder="Redis de producción" />
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={120}
+              required
+              placeholder={engine === 'redis' ? 'Ej: Redis de producción' : 'Ej: MongoDB Atlas o Cluster0'}
+            />
           </label>
 
           <label className="field">

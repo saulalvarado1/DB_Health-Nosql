@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="02-insert-initial-seeds" author="group-3">
+        <comment>Inserta los motores base soportados y las metricas esenciales iniciales</comment>
+        
+        <!-- Motores base -->
+        <insert tableName="database_engines">
+            <column name="id" value="mongodb"/>
+            <column name="name" value="MongoDB"/>
+        </insert>
+        <insert tableName="database_engines">
+            <column name="id" value="redis"/>
+            <column name="name" value="Redis"/>
+        </insert>
+
+        <!-- Métricas iniciales de MongoDB -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000101"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="availability"/>
+            <column name="display_name" value="Disponibilidad"/>
+            <column name="unit" value="boolean"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="1 si MongoDB respondió al comando ping; 0 en caso contrario."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000102"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="connections_current"/>
+            <column name="display_name" value="Conexiones actuales"/>
+            <column name="unit" value="connections"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Conexiones cliente abiertas hacia MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000103"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="memory_resident_mb"/>
+            <column name="display_name" value="Memoria residente"/>
+            <column name="unit" value="megabytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Memoria RAM residente usada por el proceso de MongoDB en megabytes."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000104"/>
+            <column name="engine_id" value="mongodb"/>
+            <column name="code" value="operations_total"/>
+            <column name="display_name" value="Operaciones acumuladas"/>
+            <column name="unit" value="operations"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Suma acumulada de operaciones reportadas por MongoDB."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <!-- Métricas iniciales de Redis -->
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000201"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="availability"/>
+            <column name="display_name" value="Disponibilidad"/>
+            <column name="unit" value="boolean"/>
+            <column name="alert_direction" value="below"/>
+            <column name="description" value="1 si Redis respondió al ping; 0 en caso contrario."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000202"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="used_memory_bytes"/>
+            <column name="display_name" value="Memoria usada"/>
+            <column name="unit" value="bytes"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Memoria usada por Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000203"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="memory_usage_percent"/>
+            <column name="display_name" value="Uso de memoria"/>
+            <column name="unit" value="percent"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Porcentaje de maxmemory utilizado; 0 si maxmemory no está definido."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000204"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="connected_clients"/>
+            <column name="display_name" value="Clientes conectados"/>
+            <column name="unit" value="clients"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Clientes conectados a Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000205"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="operations_per_second"/>
+            <column name="display_name" value="Operaciones por segundo"/>
+            <column name="unit" value="operations/second"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Operaciones instantáneas por segundo reportadas por Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="metric_definitions">
+            <column name="id" value="00000000-0000-0000-0000-000000000206"/>
+            <column name="engine_id" value="redis"/>
+            <column name="code" value="rejected_connections"/>
+            <column name="display_name" value="Conexiones rechazadas"/>
+            <column name="unit" value="connections"/>
+            <column name="alert_direction" value="above"/>
+            <column name="description" value="Conexiones rechazadas desde el inicio de Redis."/>
+            <column name="is_enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="metric_definitions"/>
+            <delete tableName="database_engines"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

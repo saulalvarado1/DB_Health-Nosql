@@ -1,0 +1,25 @@
+# =============================================================================
+# EJEMPLO DE CONFIGURACION DE VARIABLES — TERRAFORM
+# Copiar este archivo como "terraform.tfvars" y personalizar los valores.
+# =============================================================================
+
+aws_region         = "us-east-1"
+environment        = "production"
+project_name       = "db-health-monitor"
+
+# Tipo de instancia:
+# - "t3.micro" (1 vCPU, 1 GB RAM) -> Elegible para AWS Free Tier (Capa Gratuita)
+# - "t3.small" (2 vCPU, 2 GB RAM) -> Recomendada para produccion estable con Docker
+instance_type      = "t3.small"
+
+# Tamano de disco de almacenamiento (GB)
+disk_size_gb       = 20
+
+# Nombre de tu Key Pair en AWS (ejemplo: "mi-clave-aws" para acceder por SSH)
+key_name           = ""
+
+# Restriccion de IP para administracion SSH (opcional, ej: "190.237.10.25/32")
+allowed_ssh_cidr   = "0.0.0.0/0"
+
+# Puerto web de la aplicacion
+app_port           = 8080
