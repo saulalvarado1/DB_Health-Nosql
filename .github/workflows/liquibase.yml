@@ -39,11 +39,12 @@ jobs:
           docker run --rm --network host \
             -v "${{ github.workspace }}/liquibase":/liquibase/workspace \
             liquibase/liquibase:4.29.2 \
+            --searchPath=/liquibase/workspace \
             --defaultsFile=/liquibase/workspace/liquibase.properties \
             --url="jdbc:postgresql://localhost:5432/db_health_monitor" \
             --username=monitor_user \
             --password="monitor_password_123!" \
-            --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml \
+            --changeLogFile=changelog/db.changelog-master.xml \
             update
 
       - name: Verify Liquibase Applied History
@@ -51,11 +52,12 @@ jobs:
           docker run --rm --network host \
             -v "${{ github.workspace }}/liquibase":/liquibase/workspace \
             liquibase/liquibase:4.29.2 \
+            --searchPath=/liquibase/workspace \
             --defaultsFile=/liquibase/workspace/liquibase.properties \
             --url="jdbc:postgresql://localhost:5432/db_health_monitor" \
             --username=monitor_user \
             --password="monitor_password_123!" \
-            --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml \
+            --changeLogFile=changelog/db.changelog-master.xml \
             history
 
       - name: Publish Liquibase Execution Summary in Step Summary

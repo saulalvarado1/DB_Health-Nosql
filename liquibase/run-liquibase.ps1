@@ -39,12 +39,13 @@ if ($Action -eq "generate-report") {
     docker run --rm `
         -v "${ScriptDir}:/liquibase/workspace" `
         --network host `
-        liquibase/liquibase:4.27 `
+        liquibase/liquibase:4.29.2 `
+        --searchPath=/liquibase/workspace `
         --defaults-file=/liquibase/workspace/liquibase.properties `
         --url="$JdbcUrl" `
         --username="$DbUser" `
         --password="$DbPass" `
-        --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml `
+        --changeLogFile=changelog/db.changelog-master.xml `
         history
     
     Write-Host "Reporte generado en: $ReportPath" -ForegroundColor Green
@@ -52,12 +53,13 @@ if ($Action -eq "generate-report") {
     docker run --rm `
         -v "${ScriptDir}:/liquibase/workspace" `
         --network host `
-        liquibase/liquibase:4.27 `
+        liquibase/liquibase:4.29.2 `
+        --searchPath=/liquibase/workspace `
         --defaults-file=/liquibase/workspace/liquibase.properties `
         --url="$JdbcUrl" `
         --username="$DbUser" `
         --password="$DbPass" `
-        --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml `
+        --changeLogFile=changelog/db.changelog-master.xml `
         $Action
 }
 

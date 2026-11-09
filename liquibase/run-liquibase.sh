@@ -25,12 +25,13 @@ echo ""
 docker run --rm \
   -v "${SCRIPT_DIR}:/liquibase/workspace" \
   --network host \
-  liquibase/liquibase:4.27 \
+  liquibase/liquibase:4.29.2 \
+  --searchPath=/liquibase/workspace \
   --defaults-file=/liquibase/workspace/liquibase.properties \
   --url="${JDBC_URL}" \
   --username="${DB_USER}" \
   --password="${DB_PASS}" \
-  --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml \
+  --changeLogFile=changelog/db.changelog-master.xml \
   "${ACTION}"
 
 echo ""
