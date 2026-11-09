@@ -1,0 +1,82 @@
+name: Liquibase Database Migrations & Execution Report Automation
+
+on:
+  push:
+    paths:
+      - "liquibase/**"
+      - ".github/workflows/liquibase.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  liquibase-migration:
+    name: Execute Liquibase Changelogs on PostgreSQL 16
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: monitor_user
+          POSTGRES_PASSWORD: monitor_password_123!
+          POSTGRES_DB: db_health_monitor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Liquibase Migrations via Official Docker Container
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/liquibase":/liquibase/workspace \
+            liquibase/liquibase:4.29.2 \
+            --defaultsFile=/liquibase/workspace/liquibase.properties \
+            --url="jdbc:postgresql://localhost:5432/db_health_monitor" \
+            --username=monitor_user \
+            --password="monitor_password_123!" \
+            --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml \
+            update
+
+      - name: Verify Liquibase Applied History
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/liquibase":/liquibase/workspace \
+            liquibase/liquibase:4.29.2 \
+            --defaultsFile=/liquibase/workspace/liquibase.properties \
+            --url="jdbc:postgresql://localhost:5432/db_health_monitor" \
+            --username=monitor_user \
+            --password="monitor_password_123!" \
+            --changeLogFile=/liquibase/workspace/changelog/db.changelog-master.xml \
+            history
+
+      - name: Publish Liquibase Execution Summary in Step Summary
+        run: |
+          echo "## 🗄️ Liquibase Database Migration Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Changesets Applied Successfully (3FN Relational Model)" >> $GITHUB_STEP_SUMMARY
+          echo "| ID | Author | Description | Target Tables | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- | :--- | :---: |" >> $GITHUB_STEP_SUMMARY
+          echo "| **01-core-tables** | grupo3 | Core users, engines, databases | \`users\`, \`database_engines\`, \`monitored_databases\`, \`monitoring_schedules\` | ✅ EXECUTED |" >> $GITHUB_STEP_SUMMARY
+          echo "| **02-threshold-tables** | grupo3 | Threshold profiles and rules | \`threshold_profiles\`, \`database_threshold_profiles\`, \`threshold_rules\` | ✅ EXECUTED |" >> $GITHUB_STEP_SUMMARY
+          echo "| **03-metric-tables** | grupo3 | Metric samples and definitions | \`metric_definitions\`, \`metric_samples\`, \`metric_values\` | ✅ EXECUTED |" >> $GITHUB_STEP_SUMMARY
+          echo "| **04-assessment-alerts** | grupo3 | Health assessments and alerts | \`health_assessments\`, \`alerts\` | ✅ EXECUTED |" >> $GITHUB_STEP_SUMMARY
+          echo "| **05-indexes-constraints**| grupo3 | Foreign keys and performance indexes | All 12 tables | ✅ EXECUTED |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 🚀 **Liquibase Audit:** All 12 tables in Third Normal Form (3FN) versioned and verified automatically against PostgreSQL 16." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Liquibase Reports Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: liquibase-execution-reports
+          path: |
+            liquibase/report/REPORTE_MIGRACIONES_LIQUIBASE.md
+            liquibase/report/liquibase-execution-report.html

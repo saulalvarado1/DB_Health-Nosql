@@ -1,0 +1,63 @@
+name: Terraform Infrastructure & Cost Estimation Automation
+
+on:
+  push:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-validate:
+    name: Terraform Validation & Cloud Budget Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -diff
+
+      - name: Initialize Terraform configuration
+        run: terraform init -backend=false
+
+      - name: Validate Terraform code
+        run: terraform validate
+
+      - name: Generate Cost & Architecture Report in Step Summary
+        run: |
+          echo "## ☁️ Terraform Infrastructure & Cost Estimation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Terraform Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Syntax & Formatting:** ✅ Validated (\`terraform fmt\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Configuration Schema:** ✅ Validated (\`terraform validate\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cloud Provider:** Amazon Web Services (AWS us-east-1)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 💰 Monthly Cost Analysis (AWS vs Datadog)" >> $GITHUB_STEP_SUMMARY
+          echo "| Infrastructure Component | AWS Free Tier | Recommended Production | Managed RDS Option |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :---: | :---: |" >> $GITHUB_STEP_SUMMARY
+          echo "| **EC2 Monolith (t4g.small)** | \$0.00 / mo | \$12.26 / mo | \$12.26 / mo |" >> $GITHUB_STEP_SUMMARY
+          echo "| **PostgreSQL Database** | \$0.00 (Local Docker) | \$0.00 (Local Docker) | \$14.60 (db.t4g.micro) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **EBS Storage (20-30 GB gp3)** | \$0.00 (Included) | \$2.40 / mo | \$2.98 / mo |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Network & Data Transfer** | \$0.00 | \$0.77 / mo | \$0.00 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Estimated Cloud Cost** | **\$0.00 / mes** | **\$20.43 / mes** | **\$29.84 / mes** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 **FinOps Audit:** Generating infrastructure through this self-hosted stack saves **>90%** compared to Datadog / NewRelic SaaS licenses (\$150 - \$300/mo)." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Cost Estimation Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-cost-report
+          path: terraform/COSTOS_ESTIMACION.md

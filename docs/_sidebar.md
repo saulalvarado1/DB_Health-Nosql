@@ -1,7 +1,8 @@
 * **General**
   * [Inicio](README.md)
 
-* **Arquitectura y Datos**
+* **Arquitectura y Especificación Técnica**
+  * [Especificación de Clases, Métodos y Propiedades](technical-specification.md)
   * [Modelo de Datos Relacional](data-model.md)
   * [Diccionario de Datos](data-dictionary.md)
   * [Catálogo de Métricas NoSQL](metric-catalog.md)

@@ -34,9 +34,11 @@
 
 ---
 
-## 🏗️ Arquitectura de Software
+## 🏗️ Arquitectura de Software y Diagramas de Ingeniería
 
 El sistema está estructurado como un **Monolito Modular** de alto rendimiento, aplicando los principios de la Arquitectura Hexagonal (Puertos y Adaptadores) y el Patrón Repositorio.
+
+### 1. Diagrama de Componentes (C4 Nivel 2)
 
 ```mermaid
 graph TD
@@ -67,7 +69,128 @@ graph TD
 
 ---
 
-## 🗄️ Modelo de Datos Relacional en 3FN
+### 2. Diagrama de Despliegue (Deployment Diagram)
+
+```mermaid
+graph TB
+    subgraph "Cliente"
+        Browser["💻 Navegador Web / Dispositivo Móvil"]
+    end
+
+    subgraph "Host de Despliegue (Docker Host / AWS EC2 / Railway)"
+        subgraph "Zona Pública (DMZ)"
+            Nginx["🌐 Nginx Web Proxy\n(:8080 HTTP / :443 TLS)"]
+        end
+
+        subgraph "Red Interna Aislada (Docker bridge network)"
+            ReactStatic["📦 Frontend SPA Assets\n(React 19 / HTML5 / JS)"]
+            FastAPIApp["⚡ Backend REST API\n(Python 3.13 / Uvicorn :8000)"]
+            WorkerProcess["🔄 Background Worker\n(Daemon Python 3.13)"]
+            PostgreSQLDB[("🐘 PostgreSQL 16 Service\n(:5432 - Persistencia 3FN)")]
+            StorageVolume[("💾 Docker Volume\n/var/lib/postgresql/data")]
+        end
+    end
+
+    subgraph "Servicios Externos & Nube"
+        TelegramAPI["📱 Telegram Bot API\n(HTTPS :443 Push Alerts)"]
+        RemoteMongo[("🍃 Instancia Remota MongoDB\n(:27017 Read-Only Agentless)")]
+        RemoteRedis[("⚡ Instancia Remota Redis\n(:6379 Read-Only Agentless)")]
+    end
+
+    Browser -->|HTTP/HTTPS :8080| Nginx
+    Nginx -->|Sirve estáticos /| ReactStatic
+    Nginx -->|Reverse Proxy /api/v1| FastAPIApp
+    FastAPIApp -->|TCP :5432 SQLAlchemy| PostgreSQLDB
+    WorkerProcess -->|TCP :5432 SKIP LOCKED| PostgreSQLDB
+    PostgreSQLDB --- StorageVolume
+    WorkerProcess -->|HTTPS :443| TelegramAPI
+    WorkerProcess -->|TCP :27017 serverStatus| RemoteMongo
+    WorkerProcess -->|TCP :6379 INFO / PING| RemoteRedis
+```
+
+---
+
+### 3. Diagrama de Clases (Class Diagram)
+
+```mermaid
+classDiagram
+    class User {
+        +UUID id
+        +string email
+        +string password_hash
+        +boolean is_active
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class MonitoredDatabase {
+        +UUID id
+        +UUID owner_id
+        +string engine_id
+        +string name
+        +string connection_string_encrypted
+        +boolean is_active
+    }
+
+    class HealthAssessment {
+        +UUID id
+        +UUID metric_sample_id
+        +int score
+        +string status
+        +string summary
+    }
+
+    class ThresholdRule {
+        +UUID id
+        +UUID profile_id
+        +UUID metric_definition_id
+        +string operator
+        +float warning_threshold
+        +float critical_threshold
+    }
+
+    class AuthenticationService {
+        -_session: Session
+        -_users: UserRepository
+        +register(command: RegisterUserCommand) User
+        +authenticate(email: str, password: str) User
+    }
+
+    class HealthScoreEngine {
+        +evaluate(metrics: dict, rules: list) HealthAssessmentResult
+        -calculate_penalties(metrics: dict, rules: list) int
+    }
+
+    class BaseConnector {
+        <<interface>>
+        +collect_metrics()* dict
+        +ping()* bool
+    }
+
+    class MongoDBConnector {
+        -_connection_string: str
+        +collect_metrics() dict
+        +ping() bool
+    }
+
+    class RedisConnector {
+        -_connection_string: str
+        +collect_metrics() dict
+        +ping() bool
+    }
+
+    BaseConnector <|.. MongoDBConnector : implements
+    BaseConnector <|.. RedisConnector : implements
+    User "1" --> "*" MonitoredDatabase : owns
+    MonitoredDatabase "1" --> "*" HealthAssessment : generates
+    ThresholdRule "*" --> "1" MonitoredDatabase : applies_to
+    AuthenticationService ..> User : manages
+    HealthScoreEngine ..> HealthAssessment : produces
+```
+
+---
+
+### 4. Diagrama de Entidad-Relación (ERD 3FN)
 
 PostgreSQL 16 almacena la configuración de la plataforma, usuarios, catálogos, historial de métricas y alertas. Cumple estrictamente la **Tercera Forma Normal (3FN)**:
 
@@ -90,8 +213,13 @@ erDiagram
     threshold_rules ||--o{ alerts : "dispara (1:N)"
 ```
 
-Para la especificación exhaustiva columna por columna, tipos de datos, restricciones e índices, consulte:  
-📖 **[Diccionario de Datos Completo de PostgreSQL](docs/data-dictionary.md)**
+---
+
+### 5. Diccionario de Datos Completo de PostgreSQL
+
+Para la especificación exhaustiva columna por columna, tipos de datos SQL, restricciones de integridad e índices:  
+📖 **[Diccionario de Datos Completo (12 Tablas 3FN)](docs/data-dictionary.md)**  
+📖 **[Especificación Técnica de Clases, Métodos y Propiedades](docs/technical-specification.md)**
 
 ---
 
