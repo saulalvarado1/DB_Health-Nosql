@@ -139,18 +139,19 @@ class TelegramBotListener:
     def _cmd_help(self, chat_id: int | str) -> None:
         help_text = (
             "🤖 <b>DB Health Monitor — Asistente de Operaciones</b>\n\n"
+            f"🔑 <b>Tu Telegram Chat ID:</b> <code>{chat_id}</code>\n\n"
             "Comandos disponibles en tiempo real:\n"
-            "• <b>/status</b> — Consulta la salud, puntaje y estado de tus bases de datos.\n"
-            "• <b>/alerts</b> — Lista las alertas críticas o incidentes activos.\n"
+            "• <b>/status</b> — Consulta la salud, puntaje y estado de tus bases de datos vinculadas.\n"
+            "• <b>/alerts</b> — Lista las alertas críticas o incidentes activos de tus bases de datos.\n"
             "• <b>/ping</b> — Comprueba la latencia del servidor de monitoreo.\n"
             "• <b>/help</b> — Muestra este menú de ayuda.\n\n"
-            "<i>Las alertas críticas llegarán automáticamente a este chat cuando se detecte una anomalía.</i>"
+            "<i>💡 Para vincular una base de datos a este chat, abre la plataforma web, ve a 'Configurar Telegram' en tu base de datos y pega tu Chat ID.</i>"
         )
         markup = {
             "inline_keyboard": [
                 [
-                    {"text": "📊 Ver Estado (/status)", "callback_data": "cmd:status"},
-                    {"text": "🚨 Ver Alertas (/alerts)", "callback_data": "cmd:alerts"},
+                    {"text": "📊 Ver Mi Estado (/status)", "callback_data": "cmd:status"},
+                    {"text": "🚨 Ver Mis Alertas (/alerts)", "callback_data": "cmd:alerts"},
                 ],
                 [
                     {
@@ -170,22 +171,30 @@ class TelegramBotListener:
 
     def _cmd_status(self, chat_id: int | str) -> None:
         with self._session_factory() as session:
-            str_chat_id = str(chat_id)
+            str_chat_id = str(chat_id).strip()
             dbs = (
-                session.query(MonitoredDatabase).filter(MonitoredDatabase.is_active.is_(True)).all()
+                session.query(MonitoredDatabase).filter(MonitoredDatabase.is_enabled.is_(True)).all()
             )
 
-            user_dbs = [d for d in dbs if str(d.telegram_chat_id) == str_chat_id] or dbs
+            user_dbs = [
+                d for d in dbs
+                if d.telegram_chat_id and str(d.telegram_chat_id).strip() == str_chat_id
+            ]
 
             if not user_dbs:
                 self._send_response(
                     chat_id,
-                    "ℹ️ No tienes bases de datos registradas aún.\n"
-                    "Crea una desde la plataforma web para comenzar a monitorearla.",
+                    "ℹ️ <b>No tienes bases de datos vinculadas a este chat de Telegram.</b>\n\n"
+                    f"🔑 Tu Telegram Chat ID es: <code>{chat_id}</code>\n\n"
+                    "<b>Para vincular tus bases de datos:</b>\n"
+                    "1. Ingresa a la plataforma web con tu cuenta.\n"
+                    "2. Entra al detalle de tu base de datos y haz clic en <b>Configurar Telegram</b>.\n"
+                    f"3. Pega tu Chat ID: <code>{chat_id}</code> y activa las notificaciones.\n\n"
+                    "Una vez guardado, escribe <b>/status</b> para monitorearlas desde aquí.",
                 )
                 return
 
-            lines = ["📊 <b>ESTADO DE BASES DE DATOS REGISTRADAS:</b>\n"]
+            lines = ["📊 <b>ESTADO DE TUS BASES DE DATOS VINCULADAS:</b>\n"]
             for db in user_dbs:
                 last_sample = (
                     session.query(MetricSample)
@@ -224,10 +233,29 @@ class TelegramBotListener:
 
     def _cmd_alerts(self, chat_id: int | str) -> None:
         with self._session_factory() as session:
+            str_chat_id = str(chat_id).strip()
+            dbs = (
+                session.query(MonitoredDatabase).filter(MonitoredDatabase.is_enabled.is_(True)).all()
+            )
+
+            user_dbs = [
+                d for d in dbs
+                if d.telegram_chat_id and str(d.telegram_chat_id).strip() == str_chat_id
+            ]
+
+            if not user_dbs:
+                self._send_response(
+                    chat_id,
+                    "ℹ️ <b>No tienes bases de datos vinculadas a este chat.</b>\n\n"
+                    f"Tu Chat ID es: <code>{chat_id}</code>. Vincúlalo en la plataforma web para recibir y consultar alertas.",
+                )
+                return
+
+            user_db_ids = [d.id for d in user_dbs]
             open_alerts = (
                 session.query(Alert)
-                .filter(Alert.status == "open")
-                .order_by(Alert.opened_at.desc())
+                .filter(Alert.status == "open", Alert.monitored_database_id.in_(user_db_ids))
+                .order_by(Alert.created_at.desc())
                 .limit(5)
                 .all()
             )
@@ -236,11 +264,11 @@ class TelegramBotListener:
                 self._send_response(
                     chat_id,
                     "✅ <b>¡Sin incidentes activos!</b>\n\n"
-                    "Todas las bases de datos están funcionando dentro de sus umbrales operativos normales.",
+                    "Todas tus bases de datos vinculadas están funcionando dentro de sus umbrales operativos normales.",
                 )
                 return
 
-            lines = [f"🚨 <b>ALERTAS ABIERTAS ({len(open_alerts)}):</b>\n"]
+            lines = [f"🚨 <b>ALERTAS ABIERTAS DE TUS BASES DE DATOS ({len(open_alerts)}):</b>\n"]
             for alert in open_alerts:
                 severity_icon = "🔴" if alert.severity == "critical" else "🟡"
                 db_name = (
@@ -277,6 +305,14 @@ class TelegramBotListener:
             try:
                 db_uuid = UUID(db_id_str)
                 with self._session_factory() as session:
+                    db = session.query(MonitoredDatabase).filter(MonitoredDatabase.id == db_uuid).first()
+                    if not db or not db.telegram_chat_id or str(db.telegram_chat_id).strip() != str(chat_id).strip():
+                        self._answer_callback_query(
+                            query_id,
+                            "No tienes permiso para gestionar esta base de datos.",
+                        )
+                        return
+
                     alerts = (
                         session.query(Alert)
                         .filter(Alert.monitored_database_id == db_uuid, Alert.status == "open")
