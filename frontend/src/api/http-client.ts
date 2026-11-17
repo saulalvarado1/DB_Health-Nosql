@@ -116,8 +116,10 @@ export const httpClient = {
       link.download = filename
       document.body.appendChild(link)
       link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      window.setTimeout(() => {
+        link.remove()
+        window.URL.revokeObjectURL(url)
+      }, 1000)
     } catch (error) {
       if (error instanceof ApiError) throw error
       if (error instanceof DOMException && error.name === 'AbortError') {
