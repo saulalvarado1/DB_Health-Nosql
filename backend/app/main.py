@@ -46,6 +46,21 @@ def create_application() -> FastAPI:
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
     @app.on_event("startup")
+    def run_migrations_on_startup() -> None:
+        try:
+            import os
+            from alembic import command
+            from alembic.config import Config
+
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ini_path = os.path.join(base_dir, "alembic.ini")
+            if os.path.exists(ini_path):
+                cfg = Config(ini_path)
+                command.upgrade(cfg, "head")
+        except Exception:  # noqa: BLE001
+            pass
+
+    @app.on_event("startup")
     def startup_telegram_listener() -> None:
         token = (
             settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else None
