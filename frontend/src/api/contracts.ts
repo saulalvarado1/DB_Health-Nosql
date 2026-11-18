@@ -23,6 +23,10 @@ export interface AuthCredentials {
   password: string
 }
 
+export interface GoogleLoginRequest {
+  credential: string
+}
+
 export interface MonitoredDatabase {
   id: string
   name: string

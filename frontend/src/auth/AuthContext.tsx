@@ -70,9 +70,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [login],
   )
 
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const response = await authApi.googleLogin(credential)
+    saveAccessToken(response.access_token)
+    try {
+      setUser(await authApi.me())
+    } catch (error) {
+      clearAccessToken()
+      throw error
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ user, isInitializing, login, register, logout }),
-    [isInitializing, login, logout, register, user],
+    () => ({ user, isInitializing, login, register, loginWithGoogle, logout }),
+    [isInitializing, login, loginWithGoogle, logout, register, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

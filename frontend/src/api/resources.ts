@@ -24,6 +24,8 @@ export const authApi = {
   register: (credentials: AuthCredentials) => httpClient.post<User>('/auth/register', credentials),
   login: (credentials: AuthCredentials) =>
     httpClient.post<AccessTokenResponse>('/auth/login', credentials),
+  googleLogin: (credential: string) =>
+    httpClient.post<AccessTokenResponse>('/auth/google', { credential }),
   me: () => httpClient.get<User>('/auth/me'),
 }
 

@@ -1,3 +1,5 @@
+import secrets
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -37,4 +39,28 @@ class AuthenticationService:
         user = self._users.get_by_email(email.strip().lower())
         if user is None or not user.is_active or not verify_password(password, user.password_hash):
             raise AuthenticationError("Correo o contraseña incorrectos.")
+        return user
+
+    def authenticate_or_register_google(self, email: str) -> User:
+        normalized_email = email.strip().lower()
+        user = self._users.get_by_email(normalized_email)
+        if user is not None:
+            if not user.is_active:
+                raise AuthenticationError("La cuenta de usuario está desactivada.")
+            return user
+
+        random_secret = secrets.token_urlsafe(32)
+        user = User(email=normalized_email, password_hash=hash_password(random_secret))
+        self._users.add(user)
+        try:
+            self._session.flush()
+            ThresholdProfileRepository(self._session).create_defaults_for_user(user.id)
+            self._session.commit()
+        except IntegrityError as error:
+            self._session.rollback()
+            existing = self._users.get_by_email(normalized_email)
+            if existing is not None:
+                return existing
+            raise ResourceConflictError("Ya existe una cuenta con ese correo.") from error
+        self._session.refresh(user)
         return user

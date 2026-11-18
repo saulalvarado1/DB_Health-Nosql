@@ -7,6 +7,7 @@ export interface AuthContextValue {
   isInitializing: boolean
   login: (credentials: AuthCredentials) => Promise<void>
   register: (credentials: AuthCredentials) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<void>
   logout: () => void
 }
 

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     telegram_bot_token: SecretStr | None = None
     github_token: SecretStr | None = None
     github_repository: str = "UPT-FAING-EPIS/si783-2026-ii-si783-2026-ii-proyecto-group-3"
+    google_client_id: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
