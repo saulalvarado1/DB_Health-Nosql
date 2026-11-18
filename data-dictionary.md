@@ -57,6 +57,9 @@ erDiagram
         boolean notify_on_warning
         boolean notify_on_critical
         boolean notify_on_recovery
+        boolean github_issues_enabled
+        varchar github_repository
+        text github_token_encrypted
         timestamp created_at
         timestamp updated_at
     }
@@ -195,6 +198,9 @@ Instancias de bases de datos registradas por cada usuario para su monitoreo cont
 | `notify_on_warning` | `BOOLEAN` | NO | `FALSE` | — | Si despacha mensajes ante eventos de Advertencia. |
 | `notify_on_critical` | `BOOLEAN` | NO | `TRUE` | — | Si despacha mensajes ante eventos Críticos. |
 | `notify_on_recovery` | `BOOLEAN` | NO | `TRUE` | — | Si despacha mensaje cuando la instancia se recupera. |
+| `github_issues_enabled` | `BOOLEAN` | NO | `FALSE` | — | Habilita apertura de tickets de incidente en GitHub. |
+| `github_repository` | `VARCHAR(200)` | SÍ | `NULL` | — | Repositorio GitHub de destino (`owner/repo`). |
+| `github_token_encrypted` | `TEXT` | SÍ | `NULL` | — | Token de acceso (PAT) cifrado en reposo con AES-128. |
 | `created_at` | `TIMESTAMPTZ` | NO | `NOW()` | — | Fecha de registro. |
 | `updated_at` | `TIMESTAMPTZ` | NO | `NOW()` | — | Fecha de actualización de configuración. |
 

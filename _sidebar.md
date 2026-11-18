@@ -5,6 +5,7 @@
   * [Especificación de Clases, Métodos y Propiedades](technical-specification.md)
   * [Modelo de Datos Relacional](data-model.md)
   * [Diccionario de Datos](data-dictionary.md)
+  * [Estándar de Programación](coding-standards.md)
   * [Catálogo de Métricas NoSQL](metric-catalog.md)
   * [Requisitos No Funcionales](non-functional-requirements.md)
 
