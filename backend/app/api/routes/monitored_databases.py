@@ -11,6 +11,8 @@ from app.api.dependencies import get_current_user, get_session
 from app.api.presenters import monitored_database_response, monitoring_history_response
 from app.api.schemas.monitored_databases import (
     CreateMonitoredDatabaseRequest,
+    GitHubTestIssueRequest,
+    GitHubTestIssueResponse,
     MonitoredDatabaseResponse,
     TelegramTestNotificationRequest,
     TelegramTestNotificationResponse,
@@ -103,6 +105,14 @@ def update_monitored_database(
             notify_on_warning=request.notify_on_warning,
             notify_on_critical=request.notify_on_critical,
             notify_on_recovery=request.notify_on_recovery,
+            github_issues_enabled=request.github_issues_enabled,
+            github_repository=request.github_repository,
+            github_token=(
+                request.github_token.get_secret_value()
+                if request.github_token is not None
+                else None
+            ),
+            clear_github_token=request.clear_github_token,
         ),
     )
     return monitored_database_response(database)
@@ -142,31 +152,47 @@ def test_telegram_notification(
     )
 
 
-@router.post("/{database_id}/github-issue-test")
+@router.post("/{database_id}/github-issue-test", response_model=GitHubTestIssueResponse)
 def test_github_issue(
     database_id: UUID,
+    request: GitHubTestIssueRequest | None = None,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
-) -> dict[str, Any]:
+) -> GitHubTestIssueResponse:
     from app.services.github_issues import GitHubIssueService
 
     cipher = CredentialsCipher()
     database = DatabaseRegistryService(session, cipher).get_for_owner(database_id, current_user.id)
-    service = GitHubIssueService()
+
+    custom_repo = (
+        request.repository.strip()
+        if request and request.repository and request.repository.strip()
+        else database.github_repository
+    )
+    custom_token: str | None = None
+    if request and request.token and request.token.get_secret_value().strip():
+        custom_token = request.token.get_secret_value().strip()
+    elif database.github_token_encrypted:
+        try:
+            custom_token = cipher.decrypt(database.github_token_encrypted)
+        except Exception:
+            custom_token = None
+
+    service = GitHubIssueService(token=custom_token, repository=custom_repo)
     result = service.create_critical_alert_issue(
         database_name=database.name,
         engine_id=database.engine_id,
         health_score=0,
-        error_detail="Simulación de alerta crítica: falla de conectividad en puerto primario.",
-        labels=["critical-alert", "automated-monitoring"],
+        error_detail="Simulación de alerta crítica: prueba de integración manual de GitHub Issues.",
+        labels=["test-alert", "automated-monitoring"],
     )
     if not result.created:
         raise ConfigurationError(result.error_message or "No fue posible crear el issue en GitHub.")
-    return {
-        "success": True,
-        "message": f"GitHub Issue #{result.issue_number} generado exitosamente.",
-        "issue_url": result.issue_url,
-    }
+    return GitHubTestIssueResponse(
+        success=True,
+        message=f"GitHub Issue #{result.issue_number} generado exitosamente en {service._repository}.",
+        issue_url=result.issue_url,
+    )
 
 
 @router.delete("/{database_id}", status_code=status.HTTP_204_NO_CONTENT)

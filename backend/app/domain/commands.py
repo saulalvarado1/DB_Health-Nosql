@@ -27,3 +27,7 @@ class UpdateMonitoredDatabaseCommand:
     notify_on_warning: bool | None = None
     notify_on_critical: bool | None = None
     notify_on_recovery: bool | None = None
+    github_issues_enabled: bool | None = None
+    github_repository: str | None = None
+    github_token: str | None = None
+    clear_github_token: bool | None = None

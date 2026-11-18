@@ -36,6 +36,9 @@ export interface MonitoredDatabase {
   notify_on_warning?: boolean
   notify_on_critical?: boolean
   notify_on_recovery?: boolean
+  github_issues_enabled?: boolean
+  github_repository?: string | null
+  has_github_token?: boolean
 }
 
 export interface CreateMonitoredDatabase {
@@ -56,6 +59,10 @@ export interface UpdateMonitoredDatabase {
   notify_on_warning?: boolean
   notify_on_critical?: boolean
   notify_on_recovery?: boolean
+  github_issues_enabled?: boolean
+  github_repository?: string | null
+  github_token?: string | null
+  clear_github_token?: boolean
 }
 
 export interface TelegramTestNotificationRequest {
@@ -66,6 +73,17 @@ export interface TelegramTestNotificationRequest {
 export interface TelegramTestNotificationResponse {
   success: boolean
   message: string
+}
+
+export interface GitHubTestIssueRequest {
+  repository?: string
+  token?: string
+}
+
+export interface GitHubTestIssueResponse {
+  success: boolean
+  message: string
+  issue_url?: string
 }
 
 export interface MetricValue {

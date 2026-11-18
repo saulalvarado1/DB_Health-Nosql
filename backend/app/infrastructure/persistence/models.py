@@ -94,6 +94,11 @@ class MonitoredDatabase(TimestampedModel, Base):
     notify_on_recovery: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
     )
+    github_issues_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    github_repository: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    github_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     owner: Mapped[User] = relationship(back_populates="monitored_databases")
     engine: Mapped[DatabaseEngine] = relationship(back_populates="monitored_databases")

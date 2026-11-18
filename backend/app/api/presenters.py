@@ -20,12 +20,15 @@ def monitored_database_response(database: MonitoredDatabase) -> MonitoredDatabas
         interval_seconds=database.schedule.interval_seconds,
         is_enabled=database.is_enabled,
         created_at=database.created_at,
-        telegram_notifications_enabled=getattr(database, "telegram_notifications_enabled", False),
+        telegram_notifications_enabled=bool(getattr(database, "telegram_notifications_enabled", False)),
         telegram_chat_id=getattr(database, "telegram_chat_id", None),
         has_telegram_bot_token=bool(getattr(database, "telegram_bot_token_encrypted", None)),
-        notify_on_warning=getattr(database, "notify_on_warning", False),
-        notify_on_critical=getattr(database, "notify_on_critical", True),
-        notify_on_recovery=getattr(database, "notify_on_recovery", True),
+        notify_on_warning=bool(getattr(database, "notify_on_warning", False)),
+        notify_on_critical=bool(getattr(database, "notify_on_critical", True) if getattr(database, "notify_on_critical", None) is not None else True),
+        notify_on_recovery=bool(getattr(database, "notify_on_recovery", True) if getattr(database, "notify_on_recovery", None) is not None else True),
+        github_issues_enabled=bool(getattr(database, "github_issues_enabled", False)),
+        github_repository=getattr(database, "github_repository", None),
+        has_github_token=bool(getattr(database, "github_token_encrypted", None)),
     )
 
 

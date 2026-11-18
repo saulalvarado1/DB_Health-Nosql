@@ -101,6 +101,20 @@ class DatabaseRegistryService:
             monitored_database.notify_on_critical = command.notify_on_critical
         if command.notify_on_recovery is not None:
             monitored_database.notify_on_recovery = command.notify_on_recovery
+        if command.github_issues_enabled is not None:
+            monitored_database.github_issues_enabled = command.github_issues_enabled
+        if command.github_repository is not None:
+            monitored_database.github_repository = (
+                command.github_repository.strip() if command.github_repository.strip() else None
+            )
+        if command.clear_github_token:
+            monitored_database.github_token_encrypted = None
+        elif command.github_token is not None:
+            token = command.github_token.strip()
+            if token:
+                monitored_database.github_token_encrypted = self._cipher.encrypt(token)
+            else:
+                monitored_database.github_token_encrypted = None
         if schedule_immediately:
             monitored_database.schedule.next_run_at = datetime.now(UTC)
 

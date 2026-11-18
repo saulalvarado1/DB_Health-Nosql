@@ -36,7 +36,16 @@ export function DatabaseDetailPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busyAction, setBusyAction] = useState<
-    'collect' | 'save' | 'toggle' | 'export-csv' | 'export-json' | 'save-telegram' | 'test-telegram' | null
+    | 'collect'
+    | 'save'
+    | 'toggle'
+    | 'export-csv'
+    | 'export-json'
+    | 'save-telegram'
+    | 'test-telegram'
+    | 'save-github'
+    | 'test-github'
+    | null
   >(null)
 
   const [telegramEnabled, setTelegramEnabled] = useState(false)
@@ -48,6 +57,13 @@ export function DatabaseDetailPage() {
   const [telegramSuccess, setTelegramSuccess] = useState('')
   const [telegramError, setTelegramError] = useState('')
   const [showTelegramGuide, setShowTelegramGuide] = useState(false)
+
+  const [githubIssuesEnabled, setGithubIssuesEnabled] = useState(false)
+  const [githubRepository, setGithubRepository] = useState('')
+  const [githubToken, setGithubToken] = useState('')
+  const [githubSuccess, setGithubSuccess] = useState('')
+  const [githubError, setGithubError] = useState('')
+  const [showGithubGuide, setShowGithubGuide] = useState(false)
 
   const exportReport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -112,6 +128,8 @@ export function DatabaseDetailPage() {
         setNotifyWarning(databaseResponse.notify_on_warning ?? false)
         setNotifyCritical(databaseResponse.notify_on_critical ?? true)
         setNotifyRecovery(databaseResponse.notify_on_recovery ?? true)
+        setGithubIssuesEnabled(databaseResponse.github_issues_enabled ?? false)
+        setGithubRepository(databaseResponse.github_repository ?? '')
         setHistory(historyResponse)
         setLastUpdatedAt(new Date().toISOString())
       })
@@ -240,6 +258,46 @@ export function DatabaseDetailPage() {
       setTelegramSuccess(`✅ ${res.message} ¡Revisa tu teléfono!`)
     } catch (requestError) {
       setTelegramError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function saveGithubSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusyAction('save-github')
+    setGithubError('')
+    setGithubSuccess('')
+    try {
+      const updated = await databasesApi.update(databaseId, {
+        github_issues_enabled: githubIssuesEnabled,
+        github_repository: githubRepository.trim() || null,
+        github_token: githubToken.trim() || undefined,
+      })
+      setDatabase(updated)
+      setGithubToken('')
+      setGithubSuccess('Configuración de GitHub Issues guardada correctamente.')
+    } catch (requestError) {
+      setGithubError(getErrorMessage(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function testGithubIssue() {
+    setBusyAction('test-github')
+    setGithubError('')
+    setGithubSuccess('')
+    try {
+      const res = await databasesApi.testGitHubIssue(databaseId, {
+        repository: githubRepository.trim() || undefined,
+        token: githubToken.trim() || undefined,
+      })
+      setGithubSuccess(
+        `✅ ${res.message}${res.issue_url ? ` Enlace: ${res.issue_url}` : ''}`,
+      )
+    } catch (requestError) {
+      setGithubError(getErrorMessage(requestError))
     } finally {
       setBusyAction(null)
     }
@@ -484,6 +542,107 @@ export function DatabaseDetailPage() {
                   onClick={() => void testTelegram()}
                 >
                   📱 Enviar mensaje de prueba a Telegram
+                </Button>
+              </div>
+            </form>
+          </Panel>
+
+          <Panel
+            title="Incidentes Automáticos en GitHub Issues"
+            description="Abre issues automáticos en tu propio repositorio ante fallas críticas o caídas de conexión."
+            action={
+              <button
+                type="button"
+                className="text-action"
+                onClick={() => setShowGithubGuide((prev) => !prev)}
+              >
+                {showGithubGuide ? 'Ocultar guía' : '¿Cómo configurar GitHub?'}
+              </button>
+            }
+          >
+            {githubSuccess && <SuccessNotice message={githubSuccess} />}
+            {githubError && <ErrorNotice message={githubError} />}
+
+            {showGithubGuide && (
+              <div className="security-box" style={{ marginBottom: '1.25rem' }}>
+                <strong>🐙 Cómo reportar incidentes en GitHub en 3 pasos:</strong>
+                <ul>
+                  <li>
+                    <strong>1. Repositorio de destino:</strong> Indica tu repositorio en formato <code>usuario/repositorio</code> (ej: <code>mi-usuario/mi-proyecto</code>). Por defecto viene desactivado para proteger tu privacidad.
+                  </li>
+                  <li>
+                    <strong>2. Token de acceso (Personal Access Token):</strong> Genera un token en GitHub (<em>Settings &gt; Developer Settings &gt; Personal access tokens</em>) con permisos de escritura en <strong>Issues</strong> (<code>repo</code> o <code>Issues: Read and Write</code>).
+                  </li>
+                  <li>
+                    <strong>3. Seguridad garantizada:</strong> Tu token se almacena cifrado con AES-256 en la base de datos y nunca se expone en respuestas de la API.
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <form className="form-stack" onSubmit={saveGithubSettings}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
+                <input
+                  type="checkbox"
+                  id="github-issues-enabled"
+                  checked={githubIssuesEnabled}
+                  onChange={(e) => setGithubIssuesEnabled(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="github-issues-enabled" style={{ cursor: 'pointer', fontWeight: 600 }}>
+                  Activar apertura de incidentes en GitHub para esta base de datos
+                </label>
+              </div>
+
+              <div className="form-grid" style={{ paddingTop: '0.5rem' }}>
+                <label className="field">
+                  <span>Repositorio de GitHub (owner/repo)</span>
+                  <input
+                    type="text"
+                    value={githubRepository}
+                    onChange={(e) => setGithubRepository(e.target.value)}
+                    placeholder="Ej: mi-usuario/mi-bd-incidentes"
+                    disabled={!githubIssuesEnabled}
+                  />
+                  <small>Repositorio donde se crearán los tickets de soporte ante alertas críticas.</small>
+                </label>
+
+                <label className="field">
+                  <span>
+                    GitHub Personal Access Token{' '}
+                    {database.has_github_token && (
+                      <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
+                        (Token guardado ✓)
+                      </span>
+                    )}
+                  </span>
+                  <input
+                    type="password"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder={
+                      database.has_github_token
+                        ? 'Dejar en blanco para mantener el actual'
+                        : 'ghp_... (Se cifra de forma segura)'
+                    }
+                    disabled={!githubIssuesEnabled}
+                  />
+                  <small>Opcional si usas el token global del servidor. Permiso requerido: Issues.</small>
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                <Button type="submit" busy={busyAction === 'save-github'}>
+                  Guardar configuración de GitHub
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  busy={busyAction === 'test-github'}
+                  disabled={!githubIssuesEnabled && !database.github_issues_enabled}
+                  onClick={() => void testGithubIssue()}
+                >
+                  🐙 Probar creación de Issue en GitHub
                 </Button>
               </div>
             </form>

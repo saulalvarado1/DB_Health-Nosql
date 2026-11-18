@@ -4,6 +4,8 @@ import type {
   AlertStatus,
   AuthCredentials,
   CreateMonitoredDatabase,
+  GitHubTestIssueRequest,
+  GitHubTestIssueResponse,
   HistoryTimeRange,
   MonitoredDatabase,
   MonitoringHistory,
@@ -68,6 +70,11 @@ export const databasesApi = {
   testTelegram: (databaseId: string, payload?: TelegramTestNotificationRequest) =>
     httpClient.post<TelegramTestNotificationResponse>(
       `/databases/${segment(databaseId)}/telegram-test`,
+      payload ?? {},
+    ),
+  testGitHubIssue: (databaseId: string, payload?: GitHubTestIssueRequest) =>
+    httpClient.post<GitHubTestIssueResponse>(
+      `/databases/${segment(databaseId)}/github-issue-test`,
       payload ?? {},
     ),
 }

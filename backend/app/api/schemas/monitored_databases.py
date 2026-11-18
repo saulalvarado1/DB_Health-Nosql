@@ -43,6 +43,9 @@ class MonitoredDatabaseResponse(BaseModel):
     notify_on_warning: bool = False
     notify_on_critical: bool = True
     notify_on_recovery: bool = True
+    github_issues_enabled: bool = False
+    github_repository: str | None = None
+    has_github_token: bool = False
 
 
 class UpdateMonitoredDatabaseRequest(BaseModel):
@@ -56,6 +59,10 @@ class UpdateMonitoredDatabaseRequest(BaseModel):
     notify_on_warning: bool | None = None
     notify_on_critical: bool | None = None
     notify_on_recovery: bool | None = None
+    github_issues_enabled: bool | None = None
+    github_repository: str | None = None
+    github_token: SecretStr | None = None
+    clear_github_token: bool | None = None
 
     @field_validator("name")
     @classmethod
@@ -80,6 +87,10 @@ class UpdateMonitoredDatabaseRequest(BaseModel):
             self.notify_on_warning,
             self.notify_on_critical,
             self.notify_on_recovery,
+            self.github_issues_enabled,
+            self.github_repository,
+            self.github_token,
+            self.clear_github_token,
         )
         if all(value is None for value in fields):
             raise ValueError("Debes enviar al menos un campo para actualizar.")
@@ -94,3 +105,14 @@ class TelegramTestNotificationRequest(BaseModel):
 class TelegramTestNotificationResponse(BaseModel):
     success: bool
     message: str
+
+
+class GitHubTestIssueRequest(BaseModel):
+    repository: str | None = None
+    token: SecretStr | None = None
+
+
+class GitHubTestIssueResponse(BaseModel):
+    success: bool
+    message: str
+    issue_url: str | None = None

@@ -188,10 +188,13 @@ class MonitoringService:
         health_score: int,
         health_status: str,
     ) -> None:
-        if (
-            not monitored_database.telegram_notifications_enabled
-            or not monitored_database.telegram_chat_id
-        ):
+        telegram_enabled = (
+            monitored_database.telegram_notifications_enabled
+            and bool(monitored_database.telegram_chat_id)
+        )
+        github_enabled = getattr(monitored_database, "github_issues_enabled", False)
+
+        if not telegram_enabled and not github_enabled:
             return
 
         current_signals_by_key = {signal.deduplication_key: signal for signal in current_signals}
@@ -199,31 +202,35 @@ class MonitoringService:
         for key, signal in current_signals_by_key.items():
             prev_severity = active_alerts_before.get(key)
             if prev_severity is None:
-                self._notifier.notify_alert_event(
-                    monitored_database,
-                    event_type=signal.severity.value,
-                    message=signal.message,
-                    health_score=health_score,
-                    health_status=health_status,
-                )
-                if signal.severity == HealthStatus.CRITICAL:
+                if telegram_enabled:
+                    self._notifier.notify_alert_event(
+                        monitored_database,
+                        event_type=signal.severity.value,
+                        message=signal.message,
+                        health_score=health_score,
+                        health_status=health_status,
+                    )
+                if signal.severity == HealthStatus.CRITICAL and github_enabled:
                     self._dispatch_github_issue(monitored_database, signal.message, health_score)
             elif prev_severity == "warning" and signal.severity.value == "critical":
-                self._notifier.notify_alert_event(
-                    monitored_database,
-                    event_type="critical",
-                    message=f"Escalamiento a crítico: {signal.message}",
-                    health_score=health_score,
-                    health_status=health_status,
-                )
-                self._dispatch_github_issue(
-                    monitored_database,
-                    f"Escalamiento a crítico: {signal.message}",
-                    health_score,
-                )
+                if telegram_enabled:
+                    self._notifier.notify_alert_event(
+                        monitored_database,
+                        event_type="critical",
+                        message=f"Escalamiento a crítico: {signal.message}",
+                        health_score=health_score,
+                        health_status=health_status,
+                    )
+                if github_enabled:
+                    self._dispatch_github_issue(
+                        monitored_database,
+                        f"Escalamiento a crítico: {signal.message}",
+                        health_score,
+                    )
 
         if (
-            active_alerts_before
+            telegram_enabled
+            and active_alerts_before
             and not current_signals
             and health_status == HealthStatus.HEALTHY.value
         ):
@@ -241,10 +248,25 @@ class MonitoringService:
         error_detail: str,
         health_score: int,
     ) -> None:
+        if not getattr(monitored_database, "github_issues_enabled", False):
+            return
+
         try:
+            from app.core.secrets import CredentialsCipher
             from app.services.github_issues import GitHubIssueService
 
-            GitHubIssueService().create_critical_alert_issue(
+            token = None
+            if monitored_database.github_token_encrypted:
+                try:
+                    token = CredentialsCipher().decrypt(monitored_database.github_token_encrypted)
+                except Exception:
+                    logger.warning("No se pudo descifrar el token de GitHub para la base de datos %s", monitored_database.id)
+
+            service = GitHubIssueService(
+                token=token,
+                repository=monitored_database.github_repository,
+            )
+            service.create_critical_alert_issue(
                 database_name=monitored_database.name,
                 engine_id=monitored_database.engine_id,
                 health_score=health_score,

@@ -33,10 +33,15 @@ class GitHubIssueService:
         http_client: httpx.Client | None = None,
     ) -> None:
         self._token = (
-            token
-            or (settings.github_token.get_secret_value() if settings.github_token else None)
+            token.strip()
+            if token is not None
+            else (settings.github_token.get_secret_value().strip() if settings.github_token else None)
         )
-        self._repository = repository or settings.github_repository
+        self._repository = (
+            repository.strip()
+            if repository is not None
+            else (settings.github_repository.strip() if settings.github_repository else None)
+        )
         self._http_client = http_client
 
     def create_critical_alert_issue(
@@ -48,12 +53,17 @@ class GitHubIssueService:
         error_detail: str,
         labels: list[str] | None = None,
     ) -> GitHubIssueResult:
-        """Crea un issue en GitHub con la telemetría del incidente."""
         if not self._token:
-            logger.info("GitHub Issues omitido: GITHUB_TOKEN no configurado en entorno.")
+            logger.info("GitHub Issues omitido: Token de GitHub no configurado.")
             return GitHubIssueResult(
                 created=False,
-                error_message="GITHUB_TOKEN no configurado en el servidor.",
+                error_message="Token de acceso de GitHub (PAT) no configurado.",
+            )
+        if not self._repository:
+            logger.info("GitHub Issues omitido: Repositorio no configurado.")
+            return GitHubIssueResult(
+                created=False,
+                error_message="Repositorio de GitHub no configurado (formato esperado: owner/repo).",
             )
 
         url = f"{GITHUB_API_BASE}/repos/{self._repository}/issues"
