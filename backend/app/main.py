@@ -49,6 +49,7 @@ def create_application() -> FastAPI:
     def run_migrations_on_startup() -> None:
         try:
             import os
+
             from alembic import command
             from alembic.config import Config
 
@@ -57,7 +58,7 @@ def create_application() -> FastAPI:
             if os.path.exists(ini_path):
                 cfg = Config(ini_path)
                 command.upgrade(cfg, "head")
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
     @app.on_event("startup")

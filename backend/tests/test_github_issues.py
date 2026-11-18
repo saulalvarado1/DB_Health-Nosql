@@ -53,6 +53,7 @@ def test_github_issue_service_without_repository() -> None:
 def test_monitored_database_response_masks_github_token() -> None:
     from datetime import UTC, datetime
     from uuid import uuid4
+
     from app.api.presenters import monitored_database_response
     from app.core.secrets import CredentialsCipher
     from app.infrastructure.persistence.models import MonitoredDatabase, MonitoringSchedule
@@ -95,6 +96,7 @@ def test_update_request_validation_accepts_github_changes() -> None:
 def test_dispatch_github_issue_skips_when_disabled() -> None:
     from unittest.mock import patch
     from uuid import uuid4
+
     from app.infrastructure.persistence.models import MonitoredDatabase
     from app.services.monitoring import MonitoringService
 

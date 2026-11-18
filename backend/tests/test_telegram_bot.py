@@ -3,8 +3,6 @@
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import pytest
-
 from app.infrastructure.persistence.models import Alert, MonitoredDatabase
 from app.services.telegram_bot import TelegramBotListener
 

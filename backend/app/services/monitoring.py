@@ -259,7 +259,7 @@ class MonitoringService:
             if monitored_database.github_token_encrypted:
                 try:
                     token = CredentialsCipher().decrypt(monitored_database.github_token_encrypted)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     logger.warning("No se pudo descifrar el token de GitHub para la base de datos %s", monitored_database.id)
 
             service = GitHubIssueService(

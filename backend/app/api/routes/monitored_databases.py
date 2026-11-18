@@ -1,7 +1,6 @@
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -175,7 +174,7 @@ def test_github_issue(
     elif database.github_token_encrypted:
         try:
             custom_token = cipher.decrypt(database.github_token_encrypted)
-        except Exception:
+        except Exception:  # noqa: BLE001
             custom_token = None
 
     service = GitHubIssueService(token=custom_token, repository=custom_repo)
