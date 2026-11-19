@@ -43,6 +43,15 @@ def create_application() -> FastAPI:
         }.get(type(error), status.HTTP_400_BAD_REQUEST)
         return JSONResponse(status_code=status_code, content={"detail": str(error)})
 
+    @app.get("/")
+    def root() -> dict[str, str]:
+        return {
+            "name": settings.app_name,
+            "status": "online",
+            "api_v1": settings.api_v1_prefix,
+            "health": f"{settings.api_v1_prefix}/health",
+        }
+
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
     @app.on_event("startup")
@@ -54,8 +63,13 @@ def create_application() -> FastAPI:
             from alembic.config import Config
 
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            ini_path = os.path.join(base_dir, "alembic.ini")
-            if os.path.exists(ini_path):
+            candidates = [
+                os.path.join(base_dir, "alembic.ini"),
+                os.path.join(os.getcwd(), "alembic.ini"),
+                "/app/alembic.ini",
+            ]
+            ini_path = next((p for p in candidates if os.path.exists(p)), None)
+            if ini_path:
                 cfg = Config(ini_path)
                 command.upgrade(cfg, "head")
         except Exception:  # noqa: BLE001, S110
