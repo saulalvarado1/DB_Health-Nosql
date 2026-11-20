@@ -8,6 +8,7 @@ const navigation = [
   { to: '/databases', label: 'Bases de datos', glyph: '◆' },
   { to: '/thresholds', label: 'Umbrales', glyph: '⌁' },
   { to: '/alerts', label: 'Alertas', glyph: '!' },
+  { to: '/docs', label: 'Documentación', glyph: '📖' },
 ]
 
 export function AppShell() {

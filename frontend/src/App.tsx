@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DatabaseCreatePage } from './pages/DatabaseCreatePage'
 import { DatabaseDetailPage } from './pages/DatabaseDetailPage'
 import { DatabasesPage } from './pages/DatabasesPage'
+import { DocumentationPage } from './pages/DocumentationPage'
 import { ThresholdsPage } from './pages/ThresholdsPage'
 
 function ProtectedLayout() {
@@ -29,6 +30,7 @@ export function App() {
         <Route path="databases/:databaseId" element={<DatabaseDetailPage />} />
         <Route path="thresholds" element={<ThresholdsPage />} />
         <Route path="alerts" element={<AlertsPage />} />
+        <Route path="docs" element={<DocumentationPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
