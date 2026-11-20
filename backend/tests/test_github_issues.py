@@ -113,3 +113,85 @@ def test_dispatch_github_issue_skips_when_disabled() -> None:
     with patch("app.services.github_issues.GitHubIssueService.create_critical_alert_issue") as mock_create:
         MonitoringService._dispatch_github_issue(database, "Error grave", 0)
         mock_create.assert_not_called()
+
+
+def test_github_issue_route_uses_repository_and_returns_created_issue() -> None:
+    from unittest.mock import patch
+    from uuid import uuid4
+
+    from app.api.routes.monitored_databases import test_github_issue
+    from app.api.schemas.monitored_databases import GitHubTestIssueRequest
+    from app.core.secrets import CredentialsCipher
+    from app.infrastructure.persistence.models import MonitoredDatabase, User
+    from app.services.github_issues import GitHubIssueResult
+
+    owner_id = uuid4()
+    database_id = uuid4()
+    cipher = CredentialsCipher()
+    database = MonitoredDatabase(
+        id=database_id,
+        owner_id=owner_id,
+        engine_id="mongodb",
+        name="MongoDB Prod",
+        connection_uri_encrypted="dummy",
+        is_enabled=True,
+        github_issues_enabled=True,
+        github_repository="saulalvarado1/DB_Health-Nosql",
+        github_token_encrypted=cipher.encrypt("ghp_saved_token"),
+    )
+    user = User(id=owner_id, email="dba@example.com", password_hash="hash")
+    mock_session = MagicMock()
+
+    with (
+        patch(
+            "app.api.routes.monitored_databases.MonitoredDatabaseRepository.get_for_owner",
+            return_value=database,
+        ) as mock_get_for_owner,
+        patch(
+            "app.services.github_issues.GitHubIssueService.create_critical_alert_issue",
+            return_value=GitHubIssueResult(
+                created=True,
+                issue_number=7,
+                issue_url="https://github.com/saulalvarado1/DB_Health-Nosql/issues/7",
+            ),
+        ),
+    ):
+        response = test_github_issue(
+            database_id=database_id,
+            request=GitHubTestIssueRequest(repository="saulalvarado1/DB_Health-Nosql"),
+            current_user=user,
+            session=mock_session,
+        )
+
+    mock_get_for_owner.assert_called_once_with(database_id, owner_id)
+    assert response.success is True
+    assert "#7" in response.message
+    assert response.issue_url == "https://github.com/saulalvarado1/DB_Health-Nosql/issues/7"
+
+
+def test_github_issue_route_raises_not_found_for_missing_database() -> None:
+    from unittest.mock import patch
+    from uuid import uuid4
+
+    import pytest
+
+    from app.api.routes.monitored_databases import test_github_issue
+    from app.domain.errors import ResourceNotFoundError
+    from app.infrastructure.persistence.models import User
+
+    user = User(id=uuid4(), email="dba@example.com", password_hash="hash")
+
+    with (
+        patch(
+            "app.api.routes.monitored_databases.MonitoredDatabaseRepository.get_for_owner",
+            return_value=None,
+        ),
+        pytest.raises(ResourceNotFoundError),
+    ):
+        test_github_issue(
+            database_id=uuid4(),
+            request=None,
+            current_user=user,
+            session=MagicMock(),
+        )
+

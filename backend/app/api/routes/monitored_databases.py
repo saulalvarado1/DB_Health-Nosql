@@ -200,8 +200,10 @@ def test_github_issue(
 ) -> GitHubTestIssueResponse:
     from app.services.github_issues import GitHubIssueService
 
+    database = MonitoredDatabaseRepository(session).get_for_owner(database_id, current_user.id)
+    if database is None:
+        raise ResourceNotFoundError("No se encontró la instancia monitoreada.")
     cipher = CredentialsCipher()
-    database = DatabaseRegistryService(session, cipher).get_for_owner(database_id, current_user.id)
 
     custom_repo = (
         request.repository.strip()
