@@ -724,11 +724,7 @@ export function DatabaseDetailPage() {
                     <small>Opcional si usas el token global del servidor. Permiso requerido: Issues.</small>
                   </label>
 
-                  <div style={{ padding: '8px 12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', borderRadius: '6px' }}>
-                    <small style={{ color: 'var(--text-muted)', display: 'block', lineHeight: 1.45 }}>
-                      📌 <strong>Automatización DevOps:</strong> Los incidentes creados llevarán etiquetas automáticas (<code>db-health</code>, <code>incidente-critico</code>) con telemetría de fallas para tu equipo.
-                    </small>
-                  </div>
+
 
                   <div className="channel-card__footer" style={{ margin: '8px -20px -20px -20px' }}>
                     <Button type="submit" busy={busyAction === 'save-github'}>
