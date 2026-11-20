@@ -68,7 +68,7 @@
       "properties": {
         "dbhealth.apiUrl": {
           "type": "string",
-          "default": "https://frontend-production-07c5.up.railway.app",
+          "default": "https://dbhealth.alvarado1.tech",
           "description": "URL base de la API de DB Health Monitor."
         },
         "dbhealth.autoRefreshSeconds": {

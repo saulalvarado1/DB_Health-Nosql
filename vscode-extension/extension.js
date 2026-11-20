@@ -65,7 +65,7 @@ class DBHealthTreeDataProvider {
 
   async fetchDatabases() {
     const config = vscode.workspace.getConfiguration('dbhealth');
-    const apiUrl = config.get('apiUrl') || 'https://frontend-production-07c5.up.railway.app';
+    const apiUrl = config.get('apiUrl') || 'https://dbhealth.alvarado1.tech';
 
     return new Promise((resolve) => {
       try {
@@ -157,7 +157,7 @@ function activate(context) {
   // Comando: Abrir Dashboard Web
   const openDashboardCommand = vscode.commands.registerCommand('dbhealth.openDashboard', () => {
     const config = vscode.workspace.getConfiguration('dbhealth');
-    const apiUrl = config.get('apiUrl') || 'https://frontend-production-07c5.up.railway.app';
+    const apiUrl = config.get('apiUrl') || 'https://dbhealth.alvarado1.tech';
     vscode.env.openExternal(vscode.Uri.parse(apiUrl));
   });
 
