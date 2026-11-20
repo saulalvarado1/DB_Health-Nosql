@@ -139,7 +139,11 @@ def _create_alert_for_database(session_factory: sessionmaker[Session], database_
 def test_second_user_cannot_access_another_users_data(
     client: TestClient,
     integration_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.infrastructure.connectors.redis import RedisConnector
+
+    monkeypatch.setattr(RedisConnector, "test_connection", lambda self, uri: None)
     suffix = uuid4().hex
     owner_headers = _authorization_header(client, f"integration-owner-{suffix}@example.com")
     other_user_headers = _authorization_header(client, f"integration-other-{suffix}@example.com")

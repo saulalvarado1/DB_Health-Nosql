@@ -12,6 +12,8 @@ import type {
   MonitoringRun,
   TelegramTestNotificationRequest,
   TelegramTestNotificationResponse,
+  TestConnectionRequest,
+  TestConnectionResponse,
   ThresholdProfile,
   UpdateMonitoredDatabase,
   User,
@@ -35,6 +37,8 @@ export const databasesApi = {
     httpClient.get<MonitoredDatabase>(`/databases/${segment(databaseId)}`),
   create: (payload: CreateMonitoredDatabase) =>
     httpClient.post<MonitoredDatabase>('/databases', payload),
+  testConnection: (payload: TestConnectionRequest) =>
+    httpClient.post<TestConnectionResponse>('/databases/test-connection', payload),
   update: (databaseId: string, payload: UpdateMonitoredDatabase) =>
     httpClient.patch<MonitoredDatabase>(`/databases/${segment(databaseId)}`, payload),
   remove: (databaseId: string) => httpClient.delete(`/databases/${segment(databaseId)}`),

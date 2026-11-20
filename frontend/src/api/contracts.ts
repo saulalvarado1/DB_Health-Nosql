@@ -90,6 +90,17 @@ export interface GitHubTestIssueResponse {
   issue_url?: string
 }
 
+export interface TestConnectionRequest {
+  engine: DatabaseEngine
+  connection_uri: string
+}
+
+export interface TestConnectionResponse {
+  success: boolean
+  message: string
+  latency_ms?: number | null
+}
+
 export interface MetricValue {
   code: string
   display_name: string

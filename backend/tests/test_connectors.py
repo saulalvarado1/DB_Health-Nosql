@@ -187,3 +187,55 @@ def test_derived_percentages_are_safe_when_denominators_are_zero(
 
     assert metrics["memory_usage_percent"] == 0.0
     assert metrics["keyspace_hit_rate_percent"] == 0.0
+
+
+def test_redis_test_connection_validates_scheme_and_pings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.errors import ConnectorUnavailableError
+
+    connector = redis_connector.RedisConnector()
+    with pytest.raises(ConnectorUnavailableError, match="redis://"):
+        connector.test_connection("adawd")
+
+    client = FakeRedisClient()
+    monkeypatch.setattr(redis_connector.redis.Redis, "from_url", lambda *_args, **_kwargs: client)
+    connector.test_connection("redis://user:secret@example:6379/0")
+    assert client.closed is True
+
+
+def test_redis_test_connection_hides_credentials_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from redis.exceptions import AuthenticationError
+
+    from app.domain.errors import ConnectorUnavailableError
+
+    class FailingRedisClient(FakeRedisClient):
+        def ping(self) -> bool:
+            raise AuthenticationError("WRONGPASS for super-secret-pass")
+
+    client = FailingRedisClient()
+    monkeypatch.setattr(redis_connector.redis.Redis, "from_url", lambda *_args, **_kwargs: client)
+
+    with pytest.raises(ConnectorUnavailableError) as exc_info:
+        redis_connector.RedisConnector().test_connection("redis://user:super-secret-pass@host:6379/0")
+
+    assert "super-secret-pass" not in str(exc_info.value)
+    assert "Autenticación" in str(exc_info.value)
+    assert client.closed is True
+
+
+def test_mongodb_test_connection_validates_scheme_and_pings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.errors import ConnectorUnavailableError
+
+    connector = mongodb_connector.MongoDBConnector()
+    with pytest.raises(ConnectorUnavailableError, match="mongodb://"):
+        connector.test_connection("redis://wrong-engine:6379/0")
+
+    monkeypatch.setattr(mongodb_connector, "MongoClient", FakeMongoClient)
+    connector.test_connection("mongodb://user:secret@example:27017/?authSource=admin")
+    assert FakeMongoClient.last_instance is not None
+    assert FakeMongoClient.last_instance.closed is True

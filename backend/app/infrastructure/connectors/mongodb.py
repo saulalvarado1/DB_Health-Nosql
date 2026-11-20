@@ -1,7 +1,21 @@
 from typing import Any
 
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
+from pymongo.errors import (
+    ConfigurationError as MongoConfigurationError,
+)
+from pymongo.errors import (
+    InvalidURI as MongoInvalidURI,
+)
+from pymongo.errors import (
+    OperationFailure as MongoOperationFailure,
+)
+from pymongo.errors import (
+    PyMongoError,
+)
+from pymongo.errors import (
+    ServerSelectionTimeoutError as MongoTimeoutError,
+)
 
 from app.domain.errors import ConnectorUnavailableError
 from app.domain.models import DatabaseEngine
@@ -21,6 +35,41 @@ def object_value(source: dict[str, Any], key: str) -> dict[str, Any]:
 class MongoDBConnector(DatabaseConnector):
     engine = DatabaseEngine.MONGODB
 
+    def test_connection(self, connection_uri: str) -> None:
+        normalized = connection_uri.strip()
+        if not normalized.startswith(("mongodb://", "mongodb+srv://")):
+            raise ConnectorUnavailableError(
+                "La URI de MongoDB no tiene un formato válido. Debe comenzar con mongodb:// o mongodb+srv://."
+            )
+        client: MongoClient[dict[str, Any]] | None = None
+        try:
+            client = MongoClient(
+                normalized,
+                serverSelectionTimeoutMS=5_000,
+                connectTimeoutMS=5_000,
+                socketTimeoutMS=5_000,
+            )
+            client.admin.command("ping")
+        except (MongoInvalidURI, MongoConfigurationError, ValueError) as error:
+            raise ConnectorUnavailableError(
+                "La URI de MongoDB no tiene un formato válido. Verifica el esquema, host y parámetros."
+            ) from error
+        except MongoOperationFailure as error:
+            raise ConnectorUnavailableError(
+                "Autenticación o permisos fallidos en MongoDB. Verifica el usuario, contraseña y authSource."
+            ) from error
+        except MongoTimeoutError as error:
+            raise ConnectorUnavailableError(
+                "Tiempo de espera agotado al conectar con MongoDB. Verifica el host, puerto y acceso de red/IP."
+            ) from error
+        except (PyMongoError, OSError) as error:
+            raise ConnectorUnavailableError(
+                "No fue posible conectar con MongoDB. Verifica que la instancia esté accesible y la URI sea correcta."
+            ) from error
+        finally:
+            if client is not None:
+                client.close()
+
     def collect_metrics(self, connection_uri: str) -> dict[str, float]:
         client: MongoClient[dict[str, Any]] | None = None
         try:
@@ -32,7 +81,7 @@ class MongoDBConnector(DatabaseConnector):
             )
             client.admin.command("ping")
             server_status = client.admin.command("serverStatus")
-        except PyMongoError as error:
+        except (PyMongoError, ValueError, OSError) as error:
             raise ConnectorUnavailableError("No fue posible conectar con MongoDB.") from error
         finally:
             if client is not None:

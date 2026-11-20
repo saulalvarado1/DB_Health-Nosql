@@ -10,5 +10,9 @@ class DatabaseConnector(ABC):
     engine: DatabaseEngine
 
     @abstractmethod
+    def test_connection(self, connection_uri: str) -> None:
+        """Verifica que la URI sea válida y la instancia responda sin modificar datos."""
+
+    @abstractmethod
     def collect_metrics(self, connection_uri: str) -> Mapping[str, float]:
         """Comprueba la conexión y devuelve métricas normalizadas."""

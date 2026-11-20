@@ -61,8 +61,8 @@ const badgeLabels: Record<BadgeStatus, string> = {
   warning: 'Advertencia',
   critical: 'Crítica',
   informational: 'Informativa',
-  enabled: 'Activa',
-  disabled: 'Pausada',
+  enabled: 'Monitoreo activo',
+  disabled: 'Monitoreo pausado',
 }
 
 export function StatusBadge({ status }: { status: BadgeStatus }) {

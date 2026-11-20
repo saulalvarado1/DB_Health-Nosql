@@ -1,5 +1,7 @@
 import json
+import logging
 import re
+import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -15,6 +17,8 @@ from app.api.schemas.monitored_databases import (
     MonitoredDatabaseResponse,
     TelegramTestNotificationRequest,
     TelegramTestNotificationResponse,
+    TestConnectionRequest,
+    TestConnectionResponse,
     UpdateMonitoredDatabaseRequest,
 )
 from app.api.schemas.monitoring import MonitoringHistoryResponse, MonitoringRunResponse
@@ -30,6 +34,8 @@ from app.services.monitoring import MonitoringService
 from app.services.notifications import TelegramNotificationService
 from app.services.reports import ReportExportService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/databases")
 
 RANGE_DELTAS: dict[str, timedelta] = {
@@ -40,21 +46,55 @@ RANGE_DELTAS: dict[str, timedelta] = {
 }
 
 
+@router.post("/test-connection", response_model=TestConnectionResponse)
+def test_database_connection(
+    request: TestConnectionRequest,
+    _: User = Depends(get_current_user),
+) -> TestConnectionResponse:
+    connectors = build_connector_registry()
+    connector = connectors.get(request.engine.value)
+    started = time.perf_counter()
+    connector.test_connection(request.connection_uri.get_secret_value())
+    latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+    engine_label = "Redis" if request.engine.value == "redis" else "MongoDB"
+    return TestConnectionResponse(
+        success=True,
+        message=f"Conexión exitosa con {engine_label} ({latency_ms} ms).",
+        latency_ms=latency_ms,
+    )
+
+
 @router.post("", response_model=MonitoredDatabaseResponse, status_code=status.HTTP_201_CREATED)
 def create_monitored_database(
     request: CreateMonitoredDatabaseRequest,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> MonitoredDatabaseResponse:
-    database = DatabaseRegistryService(session, CredentialsCipher()).register(
+    raw_uri = request.connection_uri.get_secret_value()
+    connectors = build_connector_registry()
+    connectors.get(request.engine.value).test_connection(raw_uri)
+
+    cipher = CredentialsCipher()
+    database = DatabaseRegistryService(session, cipher).register(
         current_user,
         RegisterMonitoredDatabaseCommand(
             name=request.name,
             engine_id=request.engine.value,
-            connection_uri=request.connection_uri.get_secret_value(),
+            connection_uri=raw_uri,
             interval_seconds=request.interval_seconds,
         ),
     )
+    try:
+        MonitoringService(
+            session=session,
+            cipher=cipher,
+            connectors=connectors,
+        ).collect_once(database)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "La recolección inicial falló para la instancia recién registrada %s.",
+            database.id,
+        )
     return monitored_database_response(database)
 
 

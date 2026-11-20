@@ -1,7 +1,15 @@
 from typing import Any
 
 import redis
-from redis.exceptions import RedisError
+from redis.exceptions import (
+    AuthenticationError as RedisAuthenticationError,
+)
+from redis.exceptions import (
+    RedisError,
+)
+from redis.exceptions import (
+    TimeoutError as RedisTimeoutError,
+)
 
 from app.domain.errors import ConnectorUnavailableError
 from app.domain.models import DatabaseEngine
@@ -18,6 +26,40 @@ def as_float(value: Any) -> float:
 class RedisConnector(DatabaseConnector):
     engine = DatabaseEngine.REDIS
 
+    def test_connection(self, connection_uri: str) -> None:
+        normalized = connection_uri.strip()
+        if not normalized.startswith(("redis://", "rediss://", "unix://")):
+            raise ConnectorUnavailableError(
+                "La URI de Redis no tiene un formato válido. Debe comenzar con redis:// o rediss://."
+            )
+        client: redis.Redis | None = None
+        try:
+            client = redis.Redis.from_url(
+                normalized,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+            )
+            client.ping()
+        except ValueError as error:
+            raise ConnectorUnavailableError(
+                "La URI de Redis no tiene un formato válido. Verifica el esquema, host y puerto."
+            ) from error
+        except RedisAuthenticationError as error:
+            raise ConnectorUnavailableError(
+                "Autenticación fallida en Redis. Verifica el usuario y la contraseña."
+            ) from error
+        except RedisTimeoutError as error:
+            raise ConnectorUnavailableError(
+                "Tiempo de espera agotado al conectar con Redis. Verifica el host, puerto y firewall."
+            ) from error
+        except (RedisError, OSError) as error:
+            raise ConnectorUnavailableError(
+                "No fue posible conectar con Redis. Verifica que la instancia esté accesible y la URI sea correcta."
+            ) from error
+        finally:
+            if client is not None:
+                client.close()
+
     def collect_metrics(self, connection_uri: str) -> dict[str, float]:
         client: redis.Redis | None = None
         try:
@@ -29,7 +71,7 @@ class RedisConnector(DatabaseConnector):
             )
             client.ping()
             info = client.info()
-        except RedisError as error:
+        except (RedisError, ValueError, OSError) as error:
             raise ConnectorUnavailableError("No fue posible conectar con Redis.") from error
         finally:
             if client is not None:

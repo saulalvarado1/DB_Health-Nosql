@@ -116,3 +116,23 @@ class GitHubTestIssueResponse(BaseModel):
     success: bool
     message: str
     issue_url: str | None = None
+
+
+class TestConnectionRequest(BaseModel):
+    engine: DatabaseEngine
+    connection_uri: SecretStr = Field(
+        description="URI de conexión a probar. Nunca se guarda ni se expone en logs o respuestas."
+    )
+
+    @field_validator("connection_uri")
+    @classmethod
+    def test_uri_must_not_be_blank(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().strip():
+            raise ValueError("La URI de conexión no puede estar vacía.")
+        return value
+
+
+class TestConnectionResponse(BaseModel):
+    success: bool
+    message: str
+    latency_ms: int | None = None
