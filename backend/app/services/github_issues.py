@@ -91,7 +91,7 @@ class GitHubIssueService:
             "### 🛠️ Acciones Recomendadas para el DBA\n"
             "1. Verificar conectividad de red y disponibilidad del puerto (`27017` para MongoDB, `6379` para Redis).\n"
             "2. Revisar consumo de recursos y memoria en el host de la base de datos.\n"
-            "3. Consultar el historial completo de telemetría en el [Dashboard de DB Health Monitor](https://frontend-production-07c5.up.railway.app).\n\n"
+            "3. Consultar el historial completo de telemetría en el [Dashboard de DB Health Monitor](https://dbhealth.alvarado1.tech).\n\n"
             "---\n"
             "*Ticket generado automáticamente por el subsistema de telemetría de **DB Health Monitor (v1.0)** — Grupo 3 (UPT).*\n"
         )

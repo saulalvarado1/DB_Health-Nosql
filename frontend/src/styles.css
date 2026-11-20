@@ -400,6 +400,7 @@ tbody tr:last-child td { border-bottom: 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border);
   gap: 12px;
@@ -409,6 +410,7 @@ tbody tr:last-child td { border-bottom: 0; }
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 200px;
 }
 .channel-card__icon {
   width: 40px;
@@ -437,10 +439,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .channel-card__title h3 {
   margin: 0;
   font-size: 15px;
+  line-height: 1.25;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .channel-card__title small {
   color: var(--text-muted);

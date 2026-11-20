@@ -144,3 +144,42 @@ def test_report_export_empty_samples_handled_gracefully() -> None:
     assert "No se registran muestras historicas" in csv_text
     assert json_data["summary"]["total_samples"] == 0
     assert json_data["summary"]["latest_health_score"] is None
+
+
+def test_report_export_works_with_orm_schedule_and_string_status() -> None:
+    database = SimpleNamespace(
+        id=uuid4(),
+        name="ORM Redis",
+        engine_id="redis",
+        schedule=SimpleNamespace(interval_seconds=30),
+        is_enabled=True,
+        created_at=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
+    )
+    sample = SimpleNamespace(
+        id=uuid4(),
+        collected_at=datetime(2026, 9, 24, 10, 0, tzinfo=UTC),
+        collection_succeeded=True,
+        error_message=None,
+        health_assessment=SimpleNamespace(score=100, status="healthy"),
+        values=[
+            SimpleNamespace(
+                numeric_value=1.0,
+                metric_definition=SimpleNamespace(
+                    code="availability",
+                    display_name="Disponibilidad",
+                    unit="ratio",
+                ),
+            )
+        ],
+    )
+    entries = [MonitoringHistoryEntry(sample=sample, diagnostics={})]
+    service = ReportExportService(database, entries)
+
+    csv_text = service.export_csv()
+    json_data = service.export_json()
+
+    assert "# Intervalo de monitoreo (segundos),30" in csv_text
+    assert "2026-09-24 10:00:00,100,healthy,SI" in csv_text
+    assert json_data["database"]["interval_seconds"] == 30
+    assert json_data["summary"]["latest_health_status"] == "healthy"
+    assert json_data["samples"][0]["health_status"] == "healthy"
