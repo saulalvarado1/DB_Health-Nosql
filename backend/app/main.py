@@ -75,17 +75,6 @@ def create_application() -> FastAPI:
         except Exception:  # noqa: BLE001, S110
             pass
 
-    @app.on_event("startup")
-    def startup_telegram_listener() -> None:
-        token = (
-            settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else None
-        )
-        if token:
-            from app.services.telegram_bot import TelegramBotListener
-
-            listener = TelegramBotListener(bot_token=token)
-            listener.start_background()
-
     return app
 
 

@@ -144,7 +144,7 @@ class TelegramNotificationService:
                 [
                     {
                         "text": "🌐 Abrir Dashboard",
-                        "url": "https://frontend-production-07c5.up.railway.app",
+                        "url": f"https://dbhealth.alvarado1.tech/databases/{database.id}",
                     },
                     {"text": "📊 Ver Estado", "callback_data": f"status:{database.id}"},
                 ]
@@ -209,7 +209,7 @@ class TelegramNotificationService:
             [
                 {
                     "text": "🌐 Ver en Dashboard",
-                    "url": f"https://frontend-production-07c5.up.railway.app/databases/{database.id}",
+                    "url": f"https://dbhealth.alvarado1.tech/databases/{database.id}",
                 }
             ]
         ]

@@ -156,7 +156,7 @@ class TelegramBotListener:
                 [
                     {
                         "text": "🌐 Abrir Dashboard Web",
-                        "url": "https://frontend-production-07c5.up.railway.app",
+                        "url": "https://dbhealth.alvarado1.tech",
                     },
                 ],
             ]
@@ -188,7 +188,7 @@ class TelegramBotListener:
                     f"🔑 Tu Telegram Chat ID es: <code>{chat_id}</code>\n\n"
                     "<b>Para vincular tus bases de datos:</b>\n"
                     "1. Ingresa a la plataforma web con tu cuenta.\n"
-                    "2. Entra al detalle de tu base de datos y haz clic en <b>Configurar Telegram</b>.\n"
+                    "2. Entra al detalle de tu base de datos y configura <b>Alertas de Telegram</b>.\n"
                     f"3. Pega tu Chat ID: <code>{chat_id}</code> y activa las notificaciones.\n\n"
                     "Una vez guardado, escribe <b>/status</b> para monitorearlas desde aquí.",
                 )
@@ -210,7 +210,7 @@ class TelegramBotListener:
                 if last_sample:
                     assessment = (
                         session.query(HealthAssessment)
-                        .filter(HealthAssessment.metric_sample_id == last_sample.id)
+                        .filter(HealthAssessment.sample_id == last_sample.id)
                         .first()
                     )
                     if assessment:
@@ -285,6 +285,74 @@ class TelegramBotListener:
             )
             self._send_response(chat_id, "\n".join(lines))
 
+    def _cmd_database_status(self, chat_id: int | str, db_uuid: UUID) -> None:
+        with self._session_factory() as session:
+            db = session.query(MonitoredDatabase).filter(MonitoredDatabase.id == db_uuid).first()
+            if not db or not db.telegram_chat_id or str(db.telegram_chat_id).strip() != str(chat_id).strip():
+                self._send_response(
+                    chat_id,
+                    "🔒 No tienes permiso para consultar esta base de datos o no está vinculada a este chat.",
+                )
+                return
+
+            last_sample = (
+                session.query(MetricSample)
+                .filter(MetricSample.monitored_database_id == db.id)
+                .order_by(MetricSample.collected_at.desc())
+                .first()
+            )
+
+            engine_icon = "🍃" if db.engine_id == "mongodb" else "⚡"
+            if not last_sample:
+                self._send_response(
+                    chat_id,
+                    f"{engine_icon} <b>{html.escape(db.name)}</b> ({db.engine_id.upper()})\n\n"
+                    "ℹ️ Aún no existen muestras recolectadas para esta instancia.",
+                )
+                return
+
+            assessment = (
+                session.query(HealthAssessment)
+                .filter(HealthAssessment.sample_id == last_sample.id)
+                .first()
+            )
+            score = assessment.score if assessment else 0
+            status_val = assessment.status if assessment else "unknown"
+            if status_val == "healthy":
+                status_icon, status_label = "🟢", "Saludable"
+            elif status_val == "warning":
+                status_icon, status_label = "🟡", "Advertencia"
+            elif status_val == "critical":
+                status_icon, status_label = "🔴", "Crítico"
+            else:
+                status_icon, status_label = "⚪", "Sin evaluar"
+
+            collected_str = last_sample.collected_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+            detail_line = (
+                f"\n<b>Motivo:</b> {html.escape(last_sample.error_message)}"
+                if not last_sample.collection_succeeded and last_sample.error_message
+                else ""
+            )
+            text = (
+                f"{engine_icon} <b>{html.escape(db.name)}</b> ({db.engine_id.upper()})\n\n"
+                f"<b>Estado:</b> {status_icon} {status_label}\n"
+                f"<b>Puntaje de salud:</b> <b>{score}/100</b>\n"
+                f"<b>Última recolección:</b> <code>{collected_str}</code>"
+                f"{detail_line}"
+            )
+            markup = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "🌐 Ver Detalle en Web",
+                            "url": f"https://dbhealth.alvarado1.tech/databases/{db.id}",
+                        },
+                        {"text": "🔄 Actualizar", "callback_data": f"status:{db.id}"},
+                    ]
+                ]
+            }
+            self._send_response(chat_id, text, reply_markup=markup)
+
     def _handle_callback_query(self, query: dict[str, Any]) -> None:
         query_id = query.get("id")
         data = query.get("data", "")
@@ -297,6 +365,15 @@ class TelegramBotListener:
         if data == "cmd:status":
             self._answer_callback_query(query_id, "Consultando estado...")
             self._cmd_status(chat_id)
+        elif data.startswith("status:"):
+            db_id_str = data[7:]
+            try:
+                db_uuid = UUID(db_id_str)
+            except ValueError:
+                self._answer_callback_query(query_id, "Identificador de instancia inválido.")
+                return
+            self._answer_callback_query(query_id, "Consultando estado...")
+            self._cmd_database_status(chat_id, db_uuid)
         elif data == "cmd:alerts":
             self._answer_callback_query(query_id, "Buscando alertas...")
             self._cmd_alerts(chat_id)
@@ -334,3 +411,84 @@ class TelegramBotListener:
                 )
             except Exception as err:  # noqa: BLE001
                 self._answer_callback_query(query_id, f"Error: {err}")
+
+
+class MultiBotTelegramManager:
+    """Administra listeners de Telegram para el bot global y bots personalizados guardados en BD."""
+
+    def __init__(
+        self,
+        global_token: str | None = None,
+        session_factory=SessionLocal,
+        sync_interval_seconds: float = 10.0,
+    ) -> None:
+        self._global_token = (global_token or "").strip() or None
+        self._session_factory = session_factory
+        self._sync_interval_seconds = sync_interval_seconds
+        self._listeners: dict[str, TelegramBotListener] = {}
+        self._is_running = False
+        self._thread: threading.Thread | None = None
+
+    def sync_once(self) -> None:
+        from app.core.secrets import CredentialsCipher
+
+        active_tokens: set[str] = set()
+        if self._global_token:
+            active_tokens.add(self._global_token)
+
+        try:
+            cipher = CredentialsCipher()
+            with self._session_factory() as session:
+                dbs = (
+                    session.query(MonitoredDatabase)
+                    .filter(
+                        MonitoredDatabase.telegram_notifications_enabled.is_(True),
+                        MonitoredDatabase.telegram_bot_token_encrypted.isnot(None),
+                    )
+                    .all()
+                )
+                for db in dbs:
+                    if not db.telegram_bot_token_encrypted:
+                        continue
+                    try:
+                        decrypted = cipher.decrypt(db.telegram_bot_token_encrypted).strip()
+                        if decrypted:
+                            active_tokens.add(decrypted)
+                    except (ValueError, TypeError):
+                        continue
+        except Exception as err:  # noqa: BLE001
+            logger.debug("No fue posible sincronizar tokens personalizados de Telegram: %s", err)
+
+        for token in active_tokens:
+            if token not in self._listeners:
+                listener = TelegramBotListener(
+                    bot_token=token,
+                    session_factory=self._session_factory,
+                )
+                listener.start_background()
+                self._listeners[token] = listener
+
+        for removed_token in list(self._listeners.keys()):
+            if removed_token not in active_tokens:
+                self._listeners.pop(removed_token).stop()
+
+    def start_background(self) -> None:
+        if self._is_running:
+            return
+        self._is_running = True
+        self._thread = threading.Thread(
+            target=self._run_loop, daemon=True, name="MultiBotTelegramManager"
+        )
+        self._thread.start()
+        logger.info("MultiBotTelegramManager iniciado en segundo plano.")
+
+    def stop(self) -> None:
+        self._is_running = False
+        for listener in self._listeners.values():
+            listener.stop()
+        self._listeners.clear()
+
+    def _run_loop(self) -> None:
+        while self._is_running:
+            self.sync_once()
+            time.sleep(self._sync_interval_seconds)

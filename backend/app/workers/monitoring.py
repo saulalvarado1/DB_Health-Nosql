@@ -126,11 +126,10 @@ def run_forever() -> None:
     )
     logger.info("Worker de monitoreo iniciado.")
     token = settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else None
-    if token:
-        from app.services.telegram_bot import TelegramBotListener
+    from app.services.telegram_bot import MultiBotTelegramManager
 
-        listener = TelegramBotListener(bot_token=token)
-        listener.start_background()
+    bot_manager = MultiBotTelegramManager(global_token=token)
+    bot_manager.start_background()
     while True:
         try:
             summary = worker.run_once()
