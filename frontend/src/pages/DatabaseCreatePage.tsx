@@ -157,21 +157,6 @@ export function DatabaseCreatePage() {
             <small>Permitido: entre 10 segundos y 24 horas.</small>
           </label>
 
-          <div className="security-box form-grid__full">
-            <strong>Guía de conectividad según el entorno</strong>
-            <ul>
-              <li>
-                <strong>Bases de datos en la nube (Recomendado):</strong> Ingresa la URL pública o cadena de conexión provista por tu servicio (ej. MongoDB Atlas, Redis Cloud, AWS, Upstash).
-              </li>
-              <li>
-                <strong>Bases de datos locales (PC / Laptop):</strong> Para instancias en tu máquina evaluadas desde la nube, exponlas mediante un túnel TCP seguro (ej. <code>ngrok tcp {engine === 'redis' ? '6379' : '27017'}</code>) o ejecuta DB Health Monitor de forma local con Docker Compose.
-              </li>
-              <li>
-                <strong>Permisos mínimos:</strong> La cuenta debe permitir únicamente operaciones de lectura (<code>PING</code>/<code>INFO</code> en Redis; <code>ping</code>/<code>serverStatus</code> en MongoDB). El monitor nunca modifica tus datos.
-              </li>
-            </ul>
-          </div>
-
           <div className="form-actions form-grid__full">
             <Link className="button button--secondary" to="/databases">Cancelar</Link>
             <Button

@@ -17,7 +17,6 @@ describe('DatabaseCreatePage', () => {
     expect(uriInput).toHaveAttribute('type', 'password')
     expect(uriInput).toHaveValue('')
     expect(screen.queryByDisplayValue(/secret|password|contraseña real/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/Guía de conectividad según el entorno/i)).toBeInTheDocument()
   })
 
   it('muestra advertencia cuando se detecta una dirección local o privada', () => {
