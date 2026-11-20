@@ -52,7 +52,7 @@ Puedes personalizar la extensión desde la configuración de VS Code:
 
 ```json
 {
-  "dbhealth.apiUrl": "https://frontend-production-07c5.up.railway.app",
+  "dbhealth.apiUrl": "https://dbhealth.alvarado1.tech",
   "dbhealth.autoRefreshSeconds": 30
 }
 ```

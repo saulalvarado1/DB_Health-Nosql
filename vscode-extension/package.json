@@ -2,7 +2,7 @@
   "name": "db-health-monitor-nosql",
   "displayName": "DB Health Monitor",
   "description": "Observabilidad proactiva y diagnóstico de salud para MongoDB y Redis en tiempo real directamente en Visual Studio Code.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "Grupo3UPTFAING",
   "engines": {
     "vscode": "^1.80.0"
