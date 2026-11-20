@@ -2,7 +2,7 @@
   "name": "db-health-monitor-nosql",
   "displayName": "DB Health Monitor",
   "description": "Observabilidad proactiva y diagnóstico de salud para MongoDB y Redis en tiempo real directamente en Visual Studio Code.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "publisher": "Grupo3UPTFAING",
   "icon": "resources/icon.png",
   "engines": {
@@ -41,6 +41,24 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "dbhealth.createDatabase",
+        "title": "DB Health: Nueva Base de Datos",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dbhealth.setToken",
+        "title": "DB Health: Conectar con Token de Acceso",
+        "icon": "$(key)"
+      },
+      {
+        "command": "dbhealth.login",
+        "title": "DB Health: Iniciar Sesión con Correo"
+      },
+      {
+        "command": "dbhealth.logout",
+        "title": "DB Health: Cerrar Sesión"
+      },
+      {
         "command": "dbhealth.openDashboard",
         "title": "DB Health: Abrir Dashboard Web",
         "icon": "$(globe)"
@@ -55,12 +73,22 @@
         {
           "command": "dbhealth.refresh",
           "when": "view == dbhealth.databasesView",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "dbhealth.createDatabase",
+          "when": "view == dbhealth.databasesView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "dbhealth.setToken",
+          "when": "view == dbhealth.databasesView",
+          "group": "navigation@3"
         },
         {
           "command": "dbhealth.openDashboard",
           "when": "view == dbhealth.databasesView",
-          "group": "navigation"
+          "group": "navigation@4"
         }
       ]
     },
@@ -71,6 +99,11 @@
           "type": "string",
           "default": "https://dbhealth.alvarado1.tech",
           "description": "URL base de la API de DB Health Monitor."
+        },
+        "dbhealth.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Token JWT de acceso para conectar con tu cuenta."
         },
         "dbhealth.autoRefreshSeconds": {
           "type": "number",

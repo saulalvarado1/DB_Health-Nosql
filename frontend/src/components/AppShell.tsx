@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
@@ -13,6 +14,15 @@ const navigation = [
 
 export function AppShell() {
   const { user, logout } = useAuth()
+  const [tokenCopied, setTokenCopied] = useState(false)
+
+  function copyVsCodeToken() {
+    const token = localStorage.getItem('token') || ''
+    if (!token) return
+    navigator.clipboard.writeText(token)
+    setTokenCopied(true)
+    setTimeout(() => setTokenCopied(false), 2500)
+  }
 
   return (
     <div className="app-shell">
@@ -47,6 +57,15 @@ export function AppShell() {
             <span>
               <strong>{user?.email}</strong>
               <small>Sesión protegida</small>
+              <button
+                type="button"
+                className="text-action"
+                style={{ fontSize: '0.78rem', padding: '3px 0', display: 'block', textAlign: 'left' }}
+                onClick={copyVsCodeToken}
+                title="Copiar token JWT para vincular con la extensión de VS Code"
+              >
+                {tokenCopied ? '✅ ¡Token copiado!' : '🔑 Token para VS Code'}
+              </button>
             </span>
           </div>
           <Button variant="ghost" onClick={logout}>Cerrar sesión</Button>
