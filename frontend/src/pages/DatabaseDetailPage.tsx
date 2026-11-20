@@ -64,6 +64,10 @@ export function DatabaseDetailPage() {
   const [githubSuccess, setGithubSuccess] = useState('')
   const [githubError, setGithubError] = useState('')
   const [showGithubGuide, setShowGithubGuide] = useState(false)
+  const [showTelegramToken, setShowTelegramToken] = useState(false)
+  const [showGithubToken, setShowGithubToken] = useState(false)
+  const [lastGithubIssueUrl, setLastGithubIssueUrl] = useState('')
+  const [lastGithubIssueNumber, setLastGithubIssueNumber] = useState<number | null>(null)
 
   const exportReport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -293,6 +297,12 @@ export function DatabaseDetailPage() {
         repository: githubRepository.trim() || undefined,
         token: githubToken.trim() || undefined,
       })
+      if (res.issue_url) {
+        setLastGithubIssueUrl(res.issue_url)
+        const parts = res.issue_url.split('/')
+        const parsedNumber = Number(parts[parts.length - 1])
+        setLastGithubIssueNumber(Number.isNaN(parsedNumber) ? null : parsedNumber)
+      }
       setGithubSuccess(
         `✅ ${res.message}${res.issue_url ? ` Enlace: ${res.issue_url}` : ''}`,
       )
@@ -372,281 +382,372 @@ export function DatabaseDetailPage() {
             </Panel>
           </div>
 
-          <Panel
-            title="Alertas y Notificaciones a Telegram"
-            description="Recibe avisos inmediatos en tu celular ante caídas de servicio o degradación de salud."
-            action={
-              <button
-                type="button"
-                className="text-action"
-                onClick={() => setShowTelegramGuide((prev) => !prev)}
-              >
-                {showTelegramGuide ? 'Ocultar guía' : '¿Cómo configurar Telegram?'}
-              </button>
-            }
-          >
-            {telegramSuccess && <SuccessNotice message={telegramSuccess} />}
-            {telegramError && <ErrorNotice message={telegramError} />}
-
-            {showTelegramGuide && (
-              <div className="security-box" style={{ marginBottom: '1.25rem' }}>
-                <strong>📱 Cómo vincular Telegram en 3 simples pasos:</strong>
-                <ul>
-                  <li>
-                    <strong>1. Obtén tu Chat ID:</strong> Abre Telegram, busca el bot <code>@userinfobot</code> y presiona <em>Start</em>. Te responderá con tu número de <code>Id</code> personal (ej: <code>123456789</code>).
-                  </li>
-                  <li>
-                    <strong>2. Inicia el bot:</strong> Abre una conversación con tu bot (o con el bot del monitor) y presiona <em>/start</em> para habilitar la recepción de mensajes.
-                  </li>
-                  <li>
-                    <strong>3. Vincula y prueba:</strong> Pega tu Chat ID abajo, activa las alertas y pulsa <em>"Enviar mensaje de prueba a Telegram"</em>.
-                  </li>
-                </ul>
+          {/* Hub de Notificaciones y Canales DevOps (Telegram & GitHub) */}
+          <section className="integration-hub" aria-label="Canales de Notificación e Integraciones">
+            <div className="integration-hub__header">
+              <div>
+                <span className="eyebrow">Canales y DevOps</span>
+                <h2 style={{ margin: '4px 0', fontSize: '1.25rem', color: 'var(--text)' }}>
+                  Canales de Notificación e Incidentes
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Alertas push instantáneas a tu teléfono y apertura automatizada de incidencias en tus repositorios de código.
+                </p>
               </div>
-            )}
+            </div>
 
-            <form className="form-stack" onSubmit={saveTelegramSettings}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
-                <input
-                  type="checkbox"
-                  id="telegram-enabled"
-                  checked={telegramEnabled}
-                  onChange={(e) => setTelegramEnabled(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <label htmlFor="telegram-enabled" style={{ cursor: 'pointer', fontWeight: 600 }}>
-                  Activar notificaciones de Telegram para esta base de datos
-                </label>
-              </div>
+            <div className="channels-grid">
+              {/* Tarjeta de Telegram */}
+              <div className={`channel-card${telegramEnabled ? ' channel-card--active' : ''}`}>
+                <div className="channel-card__header">
+                  <div className="channel-card__brand">
+                    <div className="channel-card__icon channel-card__icon--telegram" aria-hidden="true">
+                      📱
+                    </div>
+                    <div className="channel-card__title">
+                      <h3 style={{ margin: 0, fontSize: '15px' }}>Alertas y Notificaciones a Telegram</h3>
+                      <small>Mensajería instantánea a tu teléfono</small>
+                    </div>
+                  </div>
 
-              <div className="form-grid" style={{ paddingTop: '0.5rem' }}>
-                <label className="field">
-                  <span>Chat ID de Telegram</span>
-                  <input
-                    type="text"
-                    value={telegramChatId}
-                    onChange={(e) => setTelegramChatId(e.target.value)}
-                    placeholder="Ej: 123456789 o -100123456789 (canal/grupo)"
-                    disabled={!telegramEnabled}
-                  />
-                  <small>ID numérico de tu usuario, grupo o canal de Telegram.</small>
-                </label>
-
-                <label className="field">
-                  <span>
-                    Bot Token Personalizado{' '}
-                    {database.has_telegram_bot_token && (
-                      <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
-                        (Token guardado ✓)
-                      </span>
+                  <div className="channel-card__controls">
+                    {telegramEnabled && telegramChatId.trim() ? (
+                      <span className="badge-pill badge-pill--success">🟢 Conectado</span>
+                    ) : telegramEnabled ? (
+                      <span className="badge-pill badge-pill--warning">⚠️ Falta Chat ID</span>
+                    ) : (
+                      <span className="badge-pill badge-pill--muted">⚪ Inactivo</span>
                     )}
-                  </span>
-                  <input
-                    type="password"
-                    value={telegramBotToken}
-                    onChange={(e) => setTelegramBotToken(e.target.value)}
-                    placeholder={
-                      database.has_telegram_bot_token
-                        ? 'Dejar en blanco para mantener el actual'
-                        : 'Opcional. Se cifra de forma segura'
-                    }
-                    disabled={!telegramEnabled}
-                  />
-                  <small>
-                    Opcional. Si lo dejas vacío, se usa el bot predeterminado del sistema.
-                  </small>
-                </label>
 
-                <div className="form-grid__full" style={{ marginTop: '0.25rem' }}>
-                  <span
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: 'var(--text)',
-                      display: 'block',
-                      marginBottom: '0.5rem',
-                    }}
-                  >
-                    Eventos a notificar:
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
-                    <label
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
-                        opacity: telegramEnabled ? 1 : 0.6,
-                      }}
-                    >
+                    <label className="toggle-switch" title={telegramEnabled ? 'Desactivar notificaciones de Telegram' : 'Activar notificaciones de Telegram'}>
                       <input
                         type="checkbox"
-                        checked={notifyCritical}
-                        onChange={(e) => setNotifyCritical(e.target.checked)}
-                        disabled={!telegramEnabled}
-                        style={{ accentColor: 'var(--critical)' }}
+                        id="telegram-enabled"
+                        checked={telegramEnabled}
+                        onChange={(e) => setTelegramEnabled(e.target.checked)}
                       />
-                      <span>🚨 Crítico y caídas de conexión</span>
-                    </label>
-
-                    <label
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
-                        opacity: telegramEnabled ? 1 : 0.6,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={notifyWarning}
-                        onChange={(e) => setNotifyWarning(e.target.checked)}
-                        disabled={!telegramEnabled}
-                        style={{ accentColor: 'var(--warning)' }}
-                      />
-                      <span>⚠️ Advertencias de umbral</span>
-                    </label>
-
-                    <label
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        cursor: telegramEnabled ? 'pointer' : 'not-allowed',
-                        opacity: telegramEnabled ? 1 : 0.6,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={notifyRecovery}
-                        onChange={(e) => setNotifyRecovery(e.target.checked)}
-                        disabled={!telegramEnabled}
-                        style={{ accentColor: 'var(--primary)' }}
-                      />
-                      <span>✅ Recuperación de salud</span>
+                      <span className="toggle-slider" aria-hidden="true"></span>
                     </label>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-                <Button type="submit" busy={busyAction === 'save-telegram'}>
-                  Guardar alertas
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  busy={busyAction === 'test-telegram'}
-                  disabled={!telegramChatId.trim()}
-                  onClick={() => void testTelegram()}
-                >
-                  📱 Enviar mensaje de prueba a Telegram
-                </Button>
-              </div>
-            </form>
-          </Panel>
+                <form className="channel-card__body" onSubmit={saveTelegramSettings}>
+                  {telegramSuccess && <SuccessNotice message={telegramSuccess} />}
+                  {telegramError && <ErrorNotice message={telegramError} />}
 
-          <Panel
-            title="Incidentes Automáticos en GitHub Issues"
-            description="Abre issues automáticos en tu propio repositorio ante fallas críticas o caídas de conexión."
-            action={
-              <button
-                type="button"
-                className="text-action"
-                onClick={() => setShowGithubGuide((prev) => !prev)}
-              >
-                {showGithubGuide ? 'Ocultar guía' : '¿Cómo configurar GitHub?'}
-              </button>
-            }
-          >
-            {githubSuccess && <SuccessNotice message={githubSuccess} />}
-            {githubError && <ErrorNotice message={githubError} />}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="text-action"
+                      style={{ fontSize: '0.82rem', fontWeight: 600 }}
+                      onClick={() => setShowTelegramGuide((prev) => !prev)}
+                    >
+                      {showTelegramGuide ? '✕ Ocultar guía' : '💡 ¿Cómo configurar Telegram?'}
+                    </button>
+                    <a
+                      href="https://t.me/userinfobot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-action"
+                      style={{ fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      title="Abrir @userinfobot en Telegram para consultar tu Chat ID"
+                    >
+                      ↗️ Abrir @userinfobot
+                    </a>
+                  </div>
 
-            {showGithubGuide && (
-              <div className="security-box" style={{ marginBottom: '1.25rem' }}>
-                <strong>🐙 Cómo reportar incidentes en GitHub en 3 pasos:</strong>
-                <ul>
-                  <li>
-                    <strong>1. Repositorio de destino:</strong> Indica tu repositorio en formato <code>usuario/repositorio</code> (ej: <code>mi-usuario/mi-proyecto</code>). Por defecto viene desactivado para proteger tu privacidad.
-                  </li>
-                  <li>
-                    <strong>2. Token de acceso (Personal Access Token):</strong> Genera un token en GitHub (<em>Settings &gt; Developer Settings &gt; Personal access tokens</em>) con permisos de escritura en <strong>Issues</strong> (<code>repo</code> o <code>Issues: Read and Write</code>).
-                  </li>
-                  <li>
-                    <strong>3. Seguridad garantizada:</strong> Tu token se almacena cifrado con AES-256 en la base de datos y nunca se expone en respuestas de la API.
-                  </li>
-                </ul>
-              </div>
-            )}
+                  {showTelegramGuide && (
+                    <div className="security-box" style={{ margin: 0 }}>
+                      <strong>📱 Cómo vincular Telegram en 3 simples pasos:</strong>
+                      <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
+                        <li>
+                          <strong>1. Obtén tu Chat ID:</strong> Abre Telegram, busca <code>@userinfobot</code> y dale <em>Start</em>. Te responderá con tu <code>Id</code> numérico personal (ej: <code>123456789</code>).
+                        </li>
+                        <li>
+                          <strong>2. Inicia el bot:</strong> Abre una conversación con el bot y presiona <em>/start</em> para autorizar el envío de alertas.
+                        </li>
+                        <li>
+                          <strong>3. Vincula y prueba:</strong> Ingresa tu Chat ID abajo y pulsa <em>"Enviar mensaje de prueba a Telegram"</em>.
+                        </li>
+                      </ul>
+                    </div>
+                  )}
 
-            <form className="form-stack" onSubmit={saveGithubSettings}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
-                <input
-                  type="checkbox"
-                  id="github-issues-enabled"
-                  checked={githubIssuesEnabled}
-                  onChange={(e) => setGithubIssuesEnabled(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <label htmlFor="github-issues-enabled" style={{ cursor: 'pointer', fontWeight: 600 }}>
-                  Activar apertura de incidentes en GitHub para esta base de datos
-                </label>
-              </div>
+                  <label className="field">
+                    <span>Chat ID de Telegram</span>
+                    <input
+                      type="text"
+                      value={telegramChatId}
+                      onChange={(e) => setTelegramChatId(e.target.value)}
+                      placeholder="Ej: 123456789 o -100123456789 (canal/grupo)"
+                      disabled={!telegramEnabled}
+                    />
+                    <small>ID numérico de tu usuario, grupo o canal de Telegram.</small>
+                  </label>
 
-              <div className="form-grid" style={{ paddingTop: '0.5rem' }}>
-                <label className="field">
-                  <span>Repositorio de GitHub (owner/repo)</span>
-                  <input
-                    type="text"
-                    value={githubRepository}
-                    onChange={(e) => setGithubRepository(e.target.value)}
-                    placeholder="Ej: mi-usuario/mi-bd-incidentes"
-                    disabled={!githubIssuesEnabled}
-                  />
-                  <small>Repositorio donde se crearán los tickets de soporte ante alertas críticas.</small>
-                </label>
-
-                <label className="field">
-                  <span>
-                    GitHub Personal Access Token{' '}
-                    {database.has_github_token && (
-                      <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
-                        (Token guardado ✓)
+                  <label className="field">
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>
+                        Bot Token Personalizado{' '}
+                        {database.has_telegram_bot_token && (
+                          <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
+                            (Token guardado ✓)
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  <input
-                    type="password"
-                    value={githubToken}
-                    onChange={(e) => setGithubToken(e.target.value)}
-                    placeholder={
-                      database.has_github_token
-                        ? 'Dejar en blanco para mantener el actual'
-                        : 'ghp_... (Se cifra de forma segura)'
-                    }
-                    disabled={!githubIssuesEnabled}
-                  />
-                  <small>Opcional si usas el token global del servidor. Permiso requerido: Issues.</small>
-                </label>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>🛡️ Cifrado AES-256</span>
+                    </span>
+                    <div className="input-eye-wrapper">
+                      <input
+                        type={showTelegramToken ? 'text' : 'password'}
+                        value={telegramBotToken}
+                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                        placeholder={
+                          database.has_telegram_bot_token
+                            ? 'Dejar en blanco para mantener el actual'
+                            : 'Opcional. Se cifra de forma segura'
+                        }
+                        disabled={!telegramEnabled}
+                      />
+                      <button
+                        type="button"
+                        className="input-eye-btn"
+                        onClick={() => setShowTelegramToken((prev) => !prev)}
+                        title={showTelegramToken ? 'Ocultar token' : 'Mostrar token'}
+                        tabIndex={-1}
+                      >
+                        {showTelegramToken ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+                    <small>Opcional. Si lo dejas vacío, se usa el bot predeterminado del sistema.</small>
+                  </label>
+
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: '4px' }}>
+                      Eventos a notificar:
+                    </span>
+                    <div className="event-chips">
+                      <button
+                        type="button"
+                        className={`event-chip${notifyCritical ? ' event-chip--active-critical' : ''}`}
+                        onClick={() => telegramEnabled && setNotifyCritical((prev) => !prev)}
+                        disabled={!telegramEnabled}
+                        style={{ opacity: telegramEnabled ? 1 : 0.6 }}
+                        title="Alertar ante caída de base de datos o estado crítico"
+                      >
+                        <span>{notifyCritical ? '✓' : '+'}</span>
+                        <span>🚨 Crítico y caídas</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`event-chip${notifyWarning ? ' event-chip--active-warning' : ''}`}
+                        onClick={() => telegramEnabled && setNotifyWarning((prev) => !prev)}
+                        disabled={!telegramEnabled}
+                        style={{ opacity: telegramEnabled ? 1 : 0.6 }}
+                        title="Alertar cuando se supere un umbral de advertencia"
+                      >
+                        <span>{notifyWarning ? '✓' : '+'}</span>
+                        <span>⚠️ Advertencias</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`event-chip${notifyRecovery ? ' event-chip--active-recovery' : ''}`}
+                        onClick={() => telegramEnabled && setNotifyRecovery((prev) => !prev)}
+                        disabled={!telegramEnabled}
+                        style={{ opacity: telegramEnabled ? 1 : 0.6 }}
+                        title="Alertar cuando la base de datos vuelva al estado saludable"
+                      >
+                        <span>{notifyRecovery ? '✓' : '+'}</span>
+                        <span>✅ Recuperación</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="channel-card__footer" style={{ margin: '8px -20px -20px -20px' }}>
+                    <Button type="submit" busy={busyAction === 'save-telegram'}>
+                      Guardar alertas
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      busy={busyAction === 'test-telegram'}
+                      disabled={!telegramChatId.trim()}
+                      onClick={() => void testTelegram()}
+                    >
+                      📱 Enviar mensaje de prueba a Telegram
+                    </Button>
+                  </div>
+                </form>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-                <Button type="submit" busy={busyAction === 'save-github'}>
-                  Guardar configuración de GitHub
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  busy={busyAction === 'test-github'}
-                  disabled={!githubIssuesEnabled && !database.github_issues_enabled}
-                  onClick={() => void testGithubIssue()}
-                >
-                  🐙 Probar creación de Issue en GitHub
-                </Button>
+              {/* Tarjeta de GitHub Issues */}
+              <div className={`channel-card${githubIssuesEnabled ? ' channel-card--active' : ''}`}>
+                <div className="channel-card__header">
+                  <div className="channel-card__brand">
+                    <div className="channel-card__icon channel-card__icon--github" aria-hidden="true">
+                      🐙
+                    </div>
+                    <div className="channel-card__title">
+                      <h3 style={{ margin: 0, fontSize: '15px' }}>Incidentes Automáticos en GitHub Issues</h3>
+                      <small>Apertura automatizada de tickets</small>
+                    </div>
+                  </div>
+
+                  <div className="channel-card__controls">
+                    {githubIssuesEnabled && githubRepository.trim() ? (
+                      <span className="badge-pill badge-pill--success">🟢 Conectado</span>
+                    ) : githubIssuesEnabled ? (
+                      <span className="badge-pill badge-pill--warning">⚠️ Falta Repo</span>
+                    ) : (
+                      <span className="badge-pill badge-pill--muted">⚪ Inactivo</span>
+                    )}
+
+                    <label className="toggle-switch" title={githubIssuesEnabled ? 'Desactivar GitHub Issues' : 'Activar GitHub Issues'}>
+                      <input
+                        type="checkbox"
+                        id="github-issues-enabled"
+                        checked={githubIssuesEnabled}
+                        onChange={(e) => setGithubIssuesEnabled(e.target.checked)}
+                      />
+                      <span className="toggle-slider" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <form className="channel-card__body" onSubmit={saveGithubSettings}>
+                  {githubSuccess && <SuccessNotice message={githubSuccess} />}
+                  {githubError && <ErrorNotice message={githubError} />}
+
+                  {lastGithubIssueUrl && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '13px', color: '#a7f3d0' }}>
+                        🎉 Issue creado: <strong>#{lastGithubIssueNumber ?? 'nuevo'}</strong>
+                      </span>
+                      <a
+                        href={lastGithubIssueUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="button button--secondary"
+                        style={{ padding: '4px 10px', fontSize: '12px', textDecoration: 'none' }}
+                      >
+                        🌐 Ver en GitHub ↗
+                      </a>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="text-action"
+                      style={{ fontSize: '0.82rem', fontWeight: 600 }}
+                      onClick={() => setShowGithubGuide((prev) => !prev)}
+                    >
+                      {showGithubGuide ? '✕ Ocultar guía' : '💡 ¿Cómo configurar GitHub?'}
+                    </button>
+                    <a
+                      href="https://github.com/settings/tokens/new?scopes=repo&description=DBHealthMonitor"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-action"
+                      style={{ fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      title="Crear un Personal Access Token en GitHub con scope repo"
+                    >
+                      ↗️ Generar Token en GitHub
+                    </a>
+                  </div>
+
+                  {showGithubGuide && (
+                    <div className="security-box" style={{ margin: 0 }}>
+                      <strong>🐙 Cómo reportar incidentes en GitHub en 3 pasos:</strong>
+                      <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
+                        <li>
+                          <strong>1. Repositorio de destino:</strong> Indica tu repositorio en formato <code>usuario/repositorio</code> (ej: <code>mi-usuario/mi-proyecto</code>).
+                        </li>
+                        <li>
+                          <strong>2. Token de acceso (Personal Access Token):</strong> Genera un token en GitHub con permisos de escritura en <strong>Issues</strong> (<code>repo</code> o <code>Issues: Read and Write</code>).
+                        </li>
+                        <li>
+                          <strong>3. Seguridad garantizada:</strong> Tu token se almacena cifrado con AES-256 en la base de datos y nunca se expone en respuestas de la API.
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+
+                  <label className="field">
+                    <span>Repositorio de GitHub (owner/repo)</span>
+                    <input
+                      type="text"
+                      value={githubRepository}
+                      onChange={(e) => setGithubRepository(e.target.value)}
+                      placeholder="Ej: mi-usuario/mi-bd-incidentes"
+                      disabled={!githubIssuesEnabled}
+                    />
+                    <small>Repositorio donde se crearán los tickets ante alertas críticas.</small>
+                  </label>
+
+                  <label className="field">
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>
+                        GitHub Personal Access Token{' '}
+                        {database.has_github_token && (
+                          <span style={{ color: '#6ee7b7', fontSize: '11px', fontWeight: 'bold' }}>
+                            (Token guardado ✓)
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>🛡️ Cifrado AES-256</span>
+                    </span>
+                    <div className="input-eye-wrapper">
+                      <input
+                        type={showGithubToken ? 'text' : 'password'}
+                        value={githubToken}
+                        onChange={(e) => setGithubToken(e.target.value)}
+                        placeholder={
+                          database.has_github_token
+                            ? 'Dejar en blanco para mantener el actual'
+                            : 'ghp_... (Se cifra de forma segura)'
+                        }
+                        disabled={!githubIssuesEnabled}
+                      />
+                      <button
+                        type="button"
+                        className="input-eye-btn"
+                        onClick={() => setShowGithubToken((prev) => !prev)}
+                        title={showGithubToken ? 'Ocultar token' : 'Mostrar token'}
+                        tabIndex={-1}
+                      >
+                        {showGithubToken ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+                    <small>Opcional si usas el token global del servidor. Permiso requerido: Issues.</small>
+                  </label>
+
+                  <div style={{ padding: '8px 12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', lineHeight: 1.45 }}>
+                      📌 <strong>Automatización DevOps:</strong> Los incidentes creados llevarán etiquetas automáticas (<code>db-health</code>, <code>incidente-critico</code>) con telemetría de fallas para tu equipo.
+                    </small>
+                  </div>
+
+                  <div className="channel-card__footer" style={{ margin: '8px -20px -20px -20px' }}>
+                    <Button type="submit" busy={busyAction === 'save-github'}>
+                      Guardar configuración de GitHub
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      busy={busyAction === 'test-github'}
+                      disabled={!githubIssuesEnabled && !database.github_issues_enabled}
+                      onClick={() => void testGithubIssue()}
+                    >
+                      🐙 Probar creación de Issue en GitHub
+                    </Button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </Panel>
+            </div>
+          </section>
 
           <Panel
             title="Historial de monitoreo"
