@@ -67,8 +67,8 @@ class MonitoringService:
             connection_uri = self._cipher.decrypt(monitored_database.connection_uri_encrypted)
             connector = self._connectors.get(monitored_database.engine_id)
             collected_metrics = connector.collect_metrics(connection_uri)
-        except ConnectorUnavailableError:
-            return self._store_failed_sample(monitored_database, collected_at)
+        except ConnectorUnavailableError as error:
+            return self._store_failed_sample(monitored_database, collected_at, str(error))
         except ValueError as error:
             raise ConfigurationError("No se pudo leer la credencial de la instancia.") from error
 
@@ -127,14 +127,18 @@ class MonitoringService:
         )
 
     def _store_failed_sample(
-        self, monitored_database: MonitoredDatabase, collected_at: datetime
+        self,
+        monitored_database: MonitoredDatabase,
+        collected_at: datetime,
+        reason: str | None = None,
     ) -> MonitoringRunResult:
+        safe_reason = (reason or "").strip() or "No fue posible conectar con la instancia monitoreada."
         assessment = assess_connection(is_available=False)
         sample = MetricSample(
             monitored_database_id=monitored_database.id,
             collected_at=collected_at,
             collection_succeeded=False,
-            error_message="No fue posible conectar con la instancia monitoreada.",
+            error_message=safe_reason,
         )
         sample.health_assessment = HealthAssessment(
             score=assessment.score,
@@ -151,7 +155,7 @@ class MonitoringService:
             AlertSignal(
                 deduplication_key="connection-unavailable",
                 severity=HealthStatus.CRITICAL,
-                message="La instancia monitoreada no responde.",
+                message=safe_reason,
                 threshold_rule_id=None,
             ),
         )

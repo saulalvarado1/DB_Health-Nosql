@@ -32,6 +32,26 @@ def object_value(source: dict[str, Any], key: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _translate_mongodb_error(error: Exception) -> str:
+    """Devuelve un diagnóstico seguro en español sin exponer credenciales ni la URI."""
+    if isinstance(error, (MongoInvalidURI, MongoConfigurationError, ValueError)):
+        return "La URI de MongoDB no tiene un formato válido. Verifica el esquema, host y parámetros."
+    if isinstance(error, MongoOperationFailure):
+        return (
+            "Autenticación o permisos fallidos en MongoDB. "
+            "Verifica el usuario, contraseña y authSource."
+        )
+    if isinstance(error, MongoTimeoutError):
+        return (
+            "Tiempo de espera agotado al conectar con MongoDB. "
+            "Verifica el host, puerto y acceso de red/IP."
+        )
+    return (
+        "No fue posible conectar con MongoDB. "
+        "Verifica que la instancia esté accesible y la URI sea correcta."
+    )
+
+
 class MongoDBConnector(DatabaseConnector):
     engine = DatabaseEngine.MONGODB
 
@@ -50,22 +70,8 @@ class MongoDBConnector(DatabaseConnector):
                 socketTimeoutMS=5_000,
             )
             client.admin.command("ping")
-        except (MongoInvalidURI, MongoConfigurationError, ValueError) as error:
-            raise ConnectorUnavailableError(
-                "La URI de MongoDB no tiene un formato válido. Verifica el esquema, host y parámetros."
-            ) from error
-        except MongoOperationFailure as error:
-            raise ConnectorUnavailableError(
-                "Autenticación o permisos fallidos en MongoDB. Verifica el usuario, contraseña y authSource."
-            ) from error
-        except MongoTimeoutError as error:
-            raise ConnectorUnavailableError(
-                "Tiempo de espera agotado al conectar con MongoDB. Verifica el host, puerto y acceso de red/IP."
-            ) from error
-        except (PyMongoError, OSError) as error:
-            raise ConnectorUnavailableError(
-                "No fue posible conectar con MongoDB. Verifica que la instancia esté accesible y la URI sea correcta."
-            ) from error
+        except (PyMongoError, ValueError, OSError) as error:
+            raise ConnectorUnavailableError(_translate_mongodb_error(error)) from error
         finally:
             if client is not None:
                 client.close()
@@ -88,7 +94,7 @@ class MongoDBConnector(DatabaseConnector):
                 # Como ping ya respondió correctamente, se registra disponibilidad activa sin fallar.
                 server_status = {}
         except (PyMongoError, ValueError, OSError) as error:
-            raise ConnectorUnavailableError("No fue posible conectar con MongoDB.") from error
+            raise ConnectorUnavailableError(_translate_mongodb_error(error)) from error
         finally:
             if client is not None:
                 client.close()

@@ -337,10 +337,14 @@ export function DatabaseDetailPage() {
       {error && <ErrorNotice message={error} />}
       {refreshError && <ErrorNotice message={refreshError} />}
       {success && <SuccessNotice message={success} />}
-      {isShowingPreviousMetrics && metricSample && (
+      {isShowingPreviousMetrics && metricSample ? (
         <ErrorNotice
-          message={`La última recolección no obtuvo métricas. Se muestran como referencia los últimos valores correctos del ${formatDateWithSeconds(metricSample.collected_at)}.`}
+          message={`La última recolección no obtuvo métricas${latest?.error_message ? `: ${latest.error_message}` : '.'} Se muestran como referencia los últimos valores correctos del ${formatDateWithSeconds(metricSample.collected_at)}.`}
         />
+      ) : (
+        latest && !latest.collection_succeeded && latest.error_message && (
+          <ErrorNotice message={`Último fallo de conexión: ${latest.error_message}`} />
+        )
       )}
 
       {database && (
@@ -798,7 +802,7 @@ export function DatabaseDetailPage() {
                         <td>{sample.collection_succeeded ? 'Correcta' : 'No disponible'}</td>
                         <td><StatusBadge status={sample.health_status} /></td>
                         <td className="mono">{sample.health_score}/100</td>
-                        <td>{sample.collection_succeeded ? `${sample.metrics.length} valores` : 'Error de conexión protegido'}</td>
+                        <td>{sample.collection_succeeded ? `${sample.metrics.length} valores` : (sample.error_message || 'Error de conexión protegido')}</td>
                       </tr>
                     ))}
                   </tbody>

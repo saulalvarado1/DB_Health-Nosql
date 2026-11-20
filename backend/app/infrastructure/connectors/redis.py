@@ -5,6 +5,9 @@ from redis.exceptions import (
     AuthenticationError as RedisAuthenticationError,
 )
 from redis.exceptions import (
+    ConnectionError as RedisConnectionError,
+)
+from redis.exceptions import (
     RedisError,
 )
 from redis.exceptions import (
@@ -21,6 +24,25 @@ def as_float(value: Any) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _translate_redis_error(error: Exception) -> str:
+    """Devuelve un diagnóstico seguro en español sin exponer credenciales ni la URI."""
+    if isinstance(error, ValueError):
+        return "La URI de Redis no tiene un formato válido. Verifica el esquema, host y puerto."
+    if isinstance(error, RedisAuthenticationError):
+        return "Autenticación fallida en Redis. Verifica el usuario y la contraseña."
+    if isinstance(error, RedisTimeoutError):
+        return "Tiempo de espera agotado al conectar con Redis. Verifica el host, puerto y firewall."
+    if isinstance(error, RedisConnectionError):
+        return (
+            "Conexión rechazada o sin respuesta de Redis. "
+            "El servicio podría estar detenido o el puerto cerrado."
+        )
+    return (
+        "No fue posible conectar con Redis. "
+        "Verifica que la instancia esté accesible y la URI sea correcta."
+    )
 
 
 class RedisConnector(DatabaseConnector):
@@ -40,22 +62,8 @@ class RedisConnector(DatabaseConnector):
                 socket_timeout=5,
             )
             client.ping()
-        except ValueError as error:
-            raise ConnectorUnavailableError(
-                "La URI de Redis no tiene un formato válido. Verifica el esquema, host y puerto."
-            ) from error
-        except RedisAuthenticationError as error:
-            raise ConnectorUnavailableError(
-                "Autenticación fallida en Redis. Verifica el usuario y la contraseña."
-            ) from error
-        except RedisTimeoutError as error:
-            raise ConnectorUnavailableError(
-                "Tiempo de espera agotado al conectar con Redis. Verifica el host, puerto y firewall."
-            ) from error
-        except (RedisError, OSError) as error:
-            raise ConnectorUnavailableError(
-                "No fue posible conectar con Redis. Verifica que la instancia esté accesible y la URI sea correcta."
-            ) from error
+        except (ValueError, RedisError, OSError) as error:
+            raise ConnectorUnavailableError(_translate_redis_error(error)) from error
         finally:
             if client is not None:
                 client.close()
@@ -72,7 +80,7 @@ class RedisConnector(DatabaseConnector):
             client.ping()
             info = client.info()
         except (RedisError, ValueError, OSError) as error:
-            raise ConnectorUnavailableError("No fue posible conectar con Redis.") from error
+            raise ConnectorUnavailableError(_translate_redis_error(error)) from error
         finally:
             if client is not None:
                 client.close()
