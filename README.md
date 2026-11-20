@@ -18,7 +18,9 @@
 * **Asignatura:** SI-783 Base de Datos II (2026-II)
 * **Equipo de Desarrollo:** **Grupo 3**
 * **Repositorio Oficial:** [`UPT-FAING-EPIS/si783-2026-ii-si783-2026-ii-proyecto-group-3`](https://github.com/UPT-FAING-EPIS/si783-2026-ii-si783-2026-ii-proyecto-group-3)
-* **Despliegue en Producción (Demo):** [frontend-production-07c5.up.railway.app](https://frontend-production-07c5.up.railway.app)
+* **Despliegue en Producción (VPS Dedicado en la Nube):** [https://dbhealth.alvarado1.tech](https://dbhealth.alvarado1.tech)
+* **Extensión Oficial de Visual Studio Code:** [DB Health Monitor en Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=Grupo3UPTFAING.db-health-monitor-nosql)
+* **API Health Check en Vivo:** [https://dbhealth.alvarado1.tech/api/v1/health](https://dbhealth.alvarado1.tech/api/v1/health)
 * **Portal de Documentación Técnica:** [GitHub Pages Documentation](https://upt-faing-epis.github.io/si783-2026-ii-si783-2026-ii-proyecto-group-3/)
 
 ---
@@ -31,6 +33,19 @@
 2. **Score de Salud Determinista (0 a 100):** Consolida 47 métricas técnicas en un indicador de salud comprensible en 3 segundos (`Saludable: 80-100`, `Advertencia: 50-79`, `Crítico: 0-49`), con explicaciones legibles de causas de penalización.
 3. **Alertamiento Proactivo vía Telegram Bot:** Envía notificaciones instantáneas push a los dispositivos móviles de guardia ante caídas de conexión o violación de umbrales, con control inteligente de duplicados.
 4. **Seguridad Zero-Trust:** Cifrado simétrico en reposo con **AES-128 Fernet** para cadenas de conexión, hasheo de contraseñas de usuarios con **Argon2id** y autenticación stateless con **JWT**.
+
+---
+
+## 🔌 Ecosistema de Integraciones y Reto de Conectividad
+
+La plataforma cuenta con un ecosistema completo de **4 integraciones activas en producción**:
+
+| Herramienta | Tipo de Integración | Funcionalidad y Propósito |
+|:---|:---|:---|
+| **Visual Studio Code** | **Extensión Oficial (Marketplace)** | Monitoreo en tiempo real de MongoDB y Redis directamente en el Activity Bar y Status Bar del IDE (`Grupo3UPTFAING.db-health-monitor-nosql`). |
+| **Google Cloud Platform** | **Google OAuth 2.0 (Federado)** | Inicio de sesión seguro con Google en producción bajo `https://dbhealth.alvarado1.tech`. |
+| **GitHub** | **GitHub Issues API** | Generación autónoma de incidentes y tickets de soporte cuando una base de datos entra en estado crítico (`critical`). |
+| **Telegram** | **Telegram Bot API** | Despacho instantáneo de alertas push a canales y chats de DBAs con métricas de penalización de salud. |
 
 ---
 
