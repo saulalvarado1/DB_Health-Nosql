@@ -72,6 +72,7 @@ class MongoDBConnector(DatabaseConnector):
 
     def collect_metrics(self, connection_uri: str) -> dict[str, float]:
         client: MongoClient[dict[str, Any]] | None = None
+        server_status: dict[str, Any] = {}
         try:
             client = MongoClient(
                 connection_uri,
@@ -80,7 +81,12 @@ class MongoDBConnector(DatabaseConnector):
                 socketTimeoutMS=5_000,
             )
             client.admin.command("ping")
-            server_status = client.admin.command("serverStatus")
+            try:
+                server_status = client.admin.command("serverStatus")
+            except MongoOperationFailure:
+                # Planes compartidos gratuitos (ej. MongoDB Atlas Free M0) restringen serverStatus.
+                # Como ping ya respondió correctamente, se registra disponibilidad activa sin fallar.
+                server_status = {}
         except (PyMongoError, ValueError, OSError) as error:
             raise ConnectorUnavailableError("No fue posible conectar con MongoDB.") from error
         finally:

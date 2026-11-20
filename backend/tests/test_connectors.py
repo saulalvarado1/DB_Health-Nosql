@@ -239,3 +239,29 @@ def test_mongodb_test_connection_validates_scheme_and_pings(
     connector.test_connection("mongodb://user:secret@example:27017/?authSource=admin")
     assert FakeMongoClient.last_instance is not None
     assert FakeMongoClient.last_instance.closed is True
+
+
+def test_mongodb_connector_falls_back_when_server_status_is_restricted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pymongo.errors import OperationFailure
+
+    class RestrictedAtlasAdmin:
+        def command(self, command: str) -> dict[str, Any]:
+            if command == "ping":
+                return {"ok": 1.0}
+            raise OperationFailure("CMD_NOT_ALLOWED: serverStatus is not allowed in this atlas tier")
+
+    class RestrictedAtlasClient(FakeMongoClient):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            super().__init__()
+            self.admin = RestrictedAtlasAdmin()  # type: ignore[assignment]
+
+    monkeypatch.setattr(mongodb_connector, "MongoClient", RestrictedAtlasClient)
+    metrics = mongodb_connector.MongoDBConnector().collect_metrics(
+        "mongodb+srv://user:secret@cluster0.example.mongodb.net/"
+    )
+    assert metrics["availability"] == 1.0
+    assert metrics["connections_current"] == 0.0
+    assert RestrictedAtlasClient.last_instance is not None
+    assert RestrictedAtlasClient.last_instance.closed is True
