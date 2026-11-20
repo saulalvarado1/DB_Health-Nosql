@@ -8,7 +8,6 @@ import { Button } from './ui'
 const navigation = [
   { to: '/', label: 'Dashboard', glyph: '▦' },
   { to: '/databases', label: 'Bases de datos', glyph: '◆' },
-  { to: '/docs', label: 'Documentación', glyph: '📖' },
   { to: '/thresholds', label: 'Configuración', glyph: '⚙' },
   { to: '/alerts', label: 'Alertas', glyph: '!' },
 ]
@@ -71,6 +70,13 @@ export function AppShell() {
               </button>
             </span>
           </div>
+          <NavLink
+            to="/docs"
+            className={({ isActive }) => `nav-item${isActive ? ' nav-item--active' : ''}`}
+          >
+            <span className="nav-item__glyph" aria-hidden="true">📖</span>
+            Documentación
+          </NavLink>
           <Button variant="ghost" onClick={logout}>Cerrar sesión</Button>
         </div>
       </aside>
