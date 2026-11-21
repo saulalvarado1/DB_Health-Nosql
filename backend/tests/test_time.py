@@ -30,6 +30,6 @@ def test_format_peru_time_without_label() -> None:
 
 
 def test_format_peru_time_naive_assumed_utc() -> None:
-    naive_dt = datetime(2026, 11, 20, 22, 44, 56)  # noqa: DTZ001
+    naive_dt = datetime(2026, 11, 20, 22, 44, 56)
     formatted = format_peru_time(naive_dt, include_tz_label=False)
     assert formatted == "2026-11-20 17:44:56"
