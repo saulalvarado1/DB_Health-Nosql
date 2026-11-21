@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
+from app.core.time import format_peru_time
 
 logger = logging.getLogger(__name__)
 GITHUB_API_BASE = "https://api.github.com"
@@ -74,7 +74,7 @@ class GitHubIssueService:
         }
 
         title = f"🚨 [CRITICAL ALERT] Falla de salud en base de datos: {database_name} ({engine_id.upper()})"
-        now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now_str = format_peru_time()
 
         body = (
             "## 🚨 Incidente de Salud Crítico Detectado por DB Health Monitor\n\n"

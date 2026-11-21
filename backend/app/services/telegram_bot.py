@@ -12,6 +12,7 @@ from uuid import UUID
 import httpx
 
 from app.core.database import SessionLocal
+from app.core.time import format_peru_time
 from app.infrastructure.persistence.models import (
     Alert,
     HealthAssessment,
@@ -327,7 +328,7 @@ class TelegramBotListener:
             else:
                 status_icon, status_label = "⚪", "Sin evaluar"
 
-            collected_str = last_sample.collected_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+            collected_str = format_peru_time(last_sample.collected_at)
             detail_line = (
                 f"\n<b>Motivo:</b> {html.escape(last_sample.error_message)}"
                 if not last_sample.collection_succeeded and last_sample.error_message

@@ -3,13 +3,13 @@
 import html
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
 from app.core.secrets import CredentialsCipher
+from app.core.time import format_peru_time
 from app.domain.errors import ConfigurationError
 from app.infrastructure.persistence.models import MonitoredDatabase
 
@@ -130,7 +130,7 @@ class TelegramNotificationService:
                 "Debes ingresar un Chat ID de Telegram para realizar la prueba."
             )
 
-        now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now_str = format_peru_time()
         message = (
             "🤖 <b>DB Health Monitor — Notificación de Prueba</b>\n\n"
             f"✅ ¡Conexión con Telegram verificada exitosamente!\n\n"
@@ -182,7 +182,7 @@ class TelegramNotificationService:
             )
             return None
 
-        now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now_str = format_peru_time()
         escaped_name = html.escape(database.name)
         escaped_engine = html.escape(database.engine_id.upper())
         escaped_msg = html.escape(message)
